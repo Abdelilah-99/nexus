@@ -60,11 +60,8 @@ jobs:
         env:
           E2E_NO_SANDBOX: '1'
         run: |
-          if command -v google-chrome >/dev/null; then
-            export PUPPETEER_EXECUTABLE_PATH="$(command -v google-chrome)"
-          else
-            (cd frontend && npx puppeteer browsers install chrome)
-          fi
+          (cd frontend && npx puppeteer browsers install chrome)
+          export PUPPETEER_EXECUTABLE_PATH="$(cd frontend && node --input-type=module -e 'import puppeteer from "puppeteer"; console.log(await puppeteer.executablePath())')"
           bash scripts/run-local.sh --skip-build
           (cd frontend && npm run test:e2e)
       - name: Stop browser test application

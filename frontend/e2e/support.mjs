@@ -32,6 +32,7 @@ export async function launch() {
     acceptInsecureCerts: true,
     args: process.env.E2E_NO_SANDBOX === '1' ? ['--no-sandbox'] : []
   });
+  console.log(`Browser: ${await browser.version()}`);
   return browser;
 }
 

@@ -65,7 +65,7 @@ class MediaServiceTest {
     }
 
     @Test
-    void uploadImage_savesAndPublishes() throws Exception {
+    void uploadImage_savesAndPublishes() {
         MockMultipartFile file = new MockMultipartFile("file", "pic.png", "image/png", new byte[]{1, 2, 3});
         when(cloudinaryStorageService.uploadFile(file))
                 .thenReturn(Map.of("secure_url", "https://cdn/pic.png", "public_id", "public-1"));
@@ -79,7 +79,7 @@ class MediaServiceTest {
     }
 
     @Test
-    void uploadImage_storageFailurePropagatesWithoutSaving() throws Exception {
+    void uploadImage_storageFailurePropagatesWithoutSaving() {
         MockMultipartFile file = new MockMultipartFile("file", "pic.png", "image/png", new byte[]{1});
         when(cloudinaryStorageService.uploadFile(file)).thenThrow(new MediaStorageException(new java.io.IOException("boom")));
 

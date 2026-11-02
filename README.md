@@ -427,7 +427,7 @@ Five scenarios cover real browser requests through Angular → Nginx → Gateway
 - Customer cancellation of a second order without changing delivered analytics.
 - Inclusive placement-day filters, excluded dates, invalid date ranges and dashboard use at mobile width.
 
-Tests run serially because later steps use the order created by checkout. Failures save screenshots under ignored `frontend/e2e/artifacts/`; CI retains these with its quality artifacts. GitHub Actions starts a fresh local stack, runs the browser suite, and stops it before starting SonarQube to keep memory usage bounded. The app remains running after a local test run.
+Tests run serially because later steps use the order created by checkout. Failures save screenshots under ignored `frontend/e2e/artifacts/`; CI retains these with its quality artifacts. GitHub Actions installs Puppeteer's matching Chrome build, starts a fresh local stack, runs the browser suite, and stops it before starting SonarQube to keep memory usage bounded. The app remains running after a local test run.
 
 Cloudinary storage failures now return HTTP 502 with a controlled message instead of exposing provider errors as unhandled 500 responses. Angular displays that message through its existing upload error handling.
 

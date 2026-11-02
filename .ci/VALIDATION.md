@@ -157,3 +157,10 @@ GitHub Actions now builds/starts the local app and runs browser tests after back
 packaging, stops that stack before SonarQube, and retains failure screenshots.
 This local report does not claim the new Actions job or a staging deployment has
 passed; inspect the resulting remote run before merging.
+
+
+The first new browser CI run (`41465102937`) started the full stack successfully,
+but the independently installed runner Chrome reported CDP `Network.getResponseBody`
+errors in three assertions. CI now installs the Chrome build selected by Puppeteer
+and logs its version. All five scenarios also passed locally with that exact
+Chrome build (`152.0.7977.42`), in addition to the existing local system browser.

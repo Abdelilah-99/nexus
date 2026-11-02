@@ -94,7 +94,8 @@ Cloudinary during these tests.
 
 Set `PUPPETEER_EXECUTABLE_PATH` to select Chrome, or install the bundled browser with
 `npx puppeteer browsers install chrome`. An installed `/usr/bin/google-chrome` is
-detected automatically. Use `E2E_NO_SANDBOX=1 npm run test:e2e` only where the browser
+detected automatically. CI installs Puppeteer's matching Chrome build rather than
+using the runner's independently updated browser. Use `E2E_NO_SANDBOX=1 npm run test:e2e` only where the browser
 sandbox is unavailable; CI uses this on its disposable runner.
 
 Coverage includes search/filtering, pagination, checkout, seller delivery, cancelled
