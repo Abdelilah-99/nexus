@@ -685,7 +685,7 @@ cd frontend && npm run test:coverage         # frontend tests + coverage
 
 | Module | Tests | Notes |
 |---|---|---|
-| order-service | 179 | orders, cart, checkout, clients, security, DTOs |
+| order-service | 184 | orders, cart, checkout, clients, security, DTOs, and 5 integration tests on a real MongoDB |
 | product-service | 85 | includes `StockServiceTest`, `StockControllerTest` |
 | gateway | 27 | includes header-spoofing tests in `JwtAuthenticationFilterTest` and `CustomHttpServletRequestWrapperTest` |
 | frontend | 199 | includes the order model, service, list and details specs |
@@ -701,8 +701,11 @@ Main order-service test classes:
 | `OrderSearchRepositoryTest` | the generated Mongo query for each filter, literal regex, paging |
 | `ProductClientTest` | product lookup and stock calls: success, 404, 409, 5xx, unreachable, empty body |
 | `CartServiceTest`, `CartControllerTest`, `OrdersClientTest` | cart rules, checkout, idempotent retry, order verification |
+| `OrderFlowIntegrationTest` | **integration**: HTTP → controller → service → MongoDB 7 (Testcontainers). Create and read back, one order per idempotency key (real unique index), seller view and 403, cancellation saved with history and version, filters and paging run in the database |
 
-The tests need no MongoDB, Eureka or other service: repositories are mocked, HTTP calls use `MockRestServiceServer`, and time is fixed with `Clock.fixed(...)`.
+Unit tests need no MongoDB, Eureka or other service: repositories are mocked, HTTP calls use `MockRestServiceServer`, and time is fixed with `Clock.fixed(...)`.
+
+`OrderFlowIntegrationTest` starts a throw-away `mongo:7` container with Testcontainers (`@ServiceConnection` points the app at it) and replaces only `ProductClient`. It needs Docker; on a machine without Docker it is **skipped**, not failed (`@Testcontainers(disabledWithoutDocker = true)`).
 
 ### CI quality gate
 
@@ -730,7 +733,6 @@ The frontend build also enforces 80 % statements, branches, functions and lines.
 | **One status per order** | in a multi-seller order, any of its sellers changes the status for everyone | status per seller or per item |
 | No **system** role for status changes | only sellers move orders forward | trusted internal events (e.g. Kafka) |
 | Date filters use **UTC days** | an order at 00:30 Morocco time can appear under the previous day | accept the client's time zone |
-| No tests against a **real MongoDB** | indexes and queries are checked through generated queries | Testcontainers |
 | No `product-service` registered in Eureka → **500** instead of 502 | wrong status while Product Service is starting | map `IllegalStateException` in `ProductClient` |
 
 ---
