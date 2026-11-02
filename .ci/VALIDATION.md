@@ -172,3 +172,12 @@ status codes still must succeed, and POST/PATCH actions are never replayed. All
 five revised scenarios passed locally with the matching Chrome build. This avoids
 depending on DevTools retaining network response bodies while preserving the
 business assertions and the real browser/application/database path.
+
+
+Run `41468236364` passed all five browser scenarios on the hosted runner. Sonar
+bootstrap then returned an HTTP error before any scanner ran. Fresh-instance
+initialization passed on an isolated local server. CI now checks the parsed UP
+status before bootstrap and reports only endpoint/status on initialization errors;
+the Compose health check also matches the status field rather than any UP substring.
+Ten scanner/readiness/diagnostic fixture tests pass. The local disposable server
+and its database were removed without touching the persistent SonarQube stack.
