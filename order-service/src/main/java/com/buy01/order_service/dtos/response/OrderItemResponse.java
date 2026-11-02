@@ -7,6 +7,7 @@ public record OrderItemResponse(
         String productId,
         String sellerId,
         String productName,
+        String category,
         String imageUrl,
         BigDecimal unitPrice,
         int quantity,

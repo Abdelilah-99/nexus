@@ -4,13 +4,38 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+import urllib.error
+from unittest.mock import MagicMock, Mock, patch
 
 spec = importlib.util.spec_from_file_location('sonar_ci', Path(__file__).with_name('sonar_ci.py'))
 ci = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ci)
 
 class SonarCITests(unittest.TestCase):
+    def test_readiness_requires_the_up_status_field(self):
+        starting, ready = MagicMock(), MagicMock()
+        starting.__enter__.return_value.read.return_value = b'{"id":"contains-UP","status":"STARTING"}'
+        ready.__enter__.return_value.read.return_value = b'{"status":"UP"}'
+        with patch.object(ci.urllib.request, 'urlopen', side_effect=[starting, ready]) as request, \
+             patch.object(ci.time, 'sleep') as sleep:
+            ci.wait_ready('http://localhost')
+        self.assertEqual(request.call_count, 2)
+        sleep.assert_called_once_with(2)
+
+    def test_unavailable_server_fails_before_initialization(self):
+        with patch.object(ci.urllib.request, 'urlopen', side_effect=urllib.error.URLError('private')), \
+             patch.object(ci.time, 'sleep'):
+            with self.assertRaisesRegex(ci.InitializationError, 'system/status: HTTP 503'):
+                ci.wait_ready('http://localhost')
+
+    def test_initialization_errors_expose_only_endpoint_and_status(self):
+        error = urllib.error.HTTPError('http://localhost/private?token=secret', 503,
+                                       'provider-secret', {}, None)
+        with patch.object(ci.urllib.request, 'urlopen', side_effect=error):
+            with self.assertRaisesRegex(ci.InitializationError, 'users/change_password: HTTP 503') as failure:
+                ci.initialize('http://localhost')
+        self.assertNotIn('secret', str(failure.exception))
+
     def run_scan(self, order_gate='OK', order_exit=0, missing_order_coverage=False):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

@@ -1,7 +1,5 @@
 package com.buy01.order_service.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,8 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.buy01.order_service.dtos.req.CreateOrderRequest;
 import com.buy01.order_service.dtos.req.OrderFilter;
+import com.buy01.order_service.dtos.req.PageParams;
 import com.buy01.order_service.dtos.req.UpdateOrderStatusRequest;
 import com.buy01.order_service.dtos.response.OrderResponse;
+import com.buy01.order_service.dtos.response.PageResponse;
 import com.buy01.order_service.dtos.response.ReorderResponse;
 import com.buy01.order_service.security.AuthenticatedUser;
 import com.buy01.order_service.security.CurrentUser;
@@ -51,17 +51,19 @@ public class OrderController {
     }
 
     @GetMapping("/my")
-    public ResponseEntity<List<OrderResponse>> getMyOrders(
+    public ResponseEntity<PageResponse<OrderResponse>> getMyOrders(
             @Valid @ModelAttribute OrderFilter filter,
+            @Valid @ModelAttribute PageParams paging,
             @CurrentUser AuthenticatedUser user) {
-        return ResponseEntity.ok(orderService.getMyOrders(filter, user));
+        return ResponseEntity.ok(orderService.getMyOrders(filter, paging, user));
     }
 
     @GetMapping("/seller")
-    public ResponseEntity<List<OrderResponse>> getSellerOrders(
+    public ResponseEntity<PageResponse<OrderResponse>> getSellerOrders(
             @Valid @ModelAttribute OrderFilter filter,
+            @Valid @ModelAttribute PageParams paging,
             @CurrentUser AuthenticatedUser user) {
-        return ResponseEntity.ok(orderService.getSellerOrders(filter, user));
+        return ResponseEntity.ok(orderService.getSellerOrders(filter, paging, user));
     }
 
     @GetMapping("/{id}")

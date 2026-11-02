@@ -3,7 +3,10 @@ package com.buy01.order_service.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -24,6 +27,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import com.buy01.order_service.client.ProductClient;
 import com.buy01.order_service.dtos.common.ShippingAddressDto;
@@ -31,6 +37,7 @@ import com.buy01.order_service.dtos.external.ProductDetails;
 import com.buy01.order_service.dtos.req.CreateOrderRequest;
 import com.buy01.order_service.dtos.req.OrderFilter;
 import com.buy01.order_service.dtos.req.OrderItemRequest;
+import com.buy01.order_service.dtos.req.PageParams;
 import com.buy01.order_service.dtos.req.UpdateOrderStatusRequest;
 import com.buy01.order_service.dtos.response.OrderResponse;
 import com.buy01.order_service.exception.BadRequestException;
@@ -86,9 +93,9 @@ class OrderServiceImplTest {
         void products() {
             when(productClient.getProduct("headphones"))
                     .thenReturn(new ProductDetails("headphones", "Headphones", 19.99, "seller-a",
-                            List.of("https://img/h1.png", "https://img/h2.png"), 10));
+                            List.of("https://img/h1.png", "https://img/h2.png"), 10, "audio"));
             when(productClient.getProduct("cable"))
-                    .thenReturn(new ProductDetails("cable", "USB Cable", 4.5, "seller-b", null, 50));
+                    .thenReturn(new ProductDetails("cable", "USB Cable", 4.5, "seller-b", null, 50, null));
             when(orderRepository.findByCustomerIdAndIdempotencyKey("customer-1", KEY)).thenReturn(Optional.empty());
         }
 
@@ -115,6 +122,7 @@ class OrderServiceImplTest {
             assertThat(response.items()).satisfiesExactly(
                     headphones -> {
                         assertThat(headphones.productName()).isEqualTo("Headphones");
+                        assertThat(headphones.category()).isEqualTo("audio");
                         assertThat(headphones.sellerId()).isEqualTo("seller-a");
                         assertThat(headphones.imageUrl()).isEqualTo("https://img/h1.png");
                         assertThat(headphones.unitPrice()).isEqualTo(new BigDecimal("19.99"));
@@ -122,6 +130,7 @@ class OrderServiceImplTest {
                     },
                     cable -> {
                         assertThat(cable.imageUrl()).isNull();
+                        assertThat(cable.category()).isEqualTo("uncategorized");
                         assertThat(cable.unitPrice()).isEqualTo(new BigDecimal("4.50"));
                         assertThat(cable.lineTotal()).isEqualTo(new BigDecimal("13.50"));
                     });
@@ -162,7 +171,7 @@ class OrderServiceImplTest {
         @Test
         void sellerIdsAreDistinct() {
             when(productClient.getProduct("case"))
-                    .thenReturn(new ProductDetails("case", "Case", 5, "seller-a", List.of(), 5));
+                    .thenReturn(new ProductDetails("case", "Case", 5, "seller-a", List.of(), 5, "accessories"));
 
             service.createOrder(request(new OrderItemRequest("headphones", 1), new OrderItemRequest("case", 1)),
                     KEY, CUSTOMER);
@@ -219,6 +228,92 @@ class OrderServiceImplTest {
         }
 
         @Test
+        void reservesTheMergedQuantitiesBeforeSaving() {
+            service.createOrder(request(new OrderItemRequest("headphones", 1), new OrderItemRequest("cable", 2),
+                    new OrderItemRequest("headphones", 1)), KEY, CUSTOMER);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<OrderItem>> reserved = ArgumentCaptor.forClass(List.class);
+            var order = inOrder(productClient, orderRepository);
+            order.verify(productClient).reserveStock(reserved.capture());
+            order.verify(orderRepository).insert(any(Order.class));
+            assertThat(reserved.getValue()).extracting(OrderItem::productId, OrderItem::quantity)
+                    .containsExactly(org.assertj.core.groups.Tuple.tuple("headphones", 2),
+                            org.assertj.core.groups.Tuple.tuple("cable", 2));
+            verify(productClient, never()).releaseStock(anyList());
+        }
+
+        @Test
+        void expectedTotalThatStillMatches_isAccepted() {
+            var request = new CreateOrderRequest(List.of(new OrderItemRequest("headphones", 2)), ADDRESS, null,
+                    new BigDecimal("39.98"));
+
+            assertThat(service.createOrder(request, KEY, CUSTOMER).totalAmount()).isEqualTo(new BigDecimal("39.98"));
+        }
+
+        @Test
+        void changedTotal_isRefusedBeforeAnyStockIsTaken() {
+            var request = new CreateOrderRequest(List.of(new OrderItemRequest("headphones", 2)), ADDRESS, null,
+                    new BigDecimal("35.00"));
+
+            assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("the total is now 39.98");
+            verify(productClient, never()).reserveStock(anyList());
+            verify(orderRepository, never()).insert(any(Order.class));
+        }
+
+        @Test
+        void whenStockIsTakenMeanwhile_nothingIsSaved() {
+            doThrow(new BadRequestException("Not enough stock for Headphones: 0 available"))
+                    .when(productClient).reserveStock(anyList());
+            var request = request(new OrderItemRequest("headphones", 1));
+
+            assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
+                    .isInstanceOf(BadRequestException.class)
+                    .hasMessage("Not enough stock for Headphones: 0 available");
+            verify(orderRepository, never()).insert(any(Order.class));
+            verify(productClient, never()).releaseStock(anyList());
+        }
+
+        @Test
+        void concurrentDuplicate_putsBackItsOwnReservation() {
+            when(orderRepository.findByCustomerIdAndIdempotencyKey("customer-1", KEY))
+                    .thenReturn(Optional.empty())
+                    .thenReturn(Optional.of(order(OrderStatus.PENDING)));
+            when(orderRepository.insert(any(Order.class))).thenThrow(new DuplicateKeyException("duplicate"));
+
+            service.createOrder(request(new OrderItemRequest("headphones", 1)), KEY, CUSTOMER);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<OrderItem>> released = ArgumentCaptor.forClass(List.class);
+            verify(productClient).releaseStock(released.capture());
+            assertThat(released.getValue()).extracting(OrderItem::productId).containsExactly("headphones");
+        }
+
+        @Test
+        void whenSavingFails_putsTheStockBack() {
+            when(orderRepository.insert(any(Order.class))).thenThrow(new IllegalStateException("db down"));
+            var request = request(new OrderItemRequest("headphones", 1));
+
+            assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("db down");
+            verify(productClient).releaseStock(anyList());
+        }
+
+        @Test
+        void whenSavingAndReleasingFail_theSaveErrorIsReported() {
+            when(orderRepository.insert(any(Order.class))).thenThrow(new IllegalStateException("db down"));
+            doThrow(new UpstreamServiceException("Product Service is unreachable while releasing stock"))
+                    .when(productClient).releaseStock(anyList());
+            var request = request(new OrderItemRequest("headphones", 1));
+
+            assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
+                    .isInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
         void sellerCannotPlaceOrders() {
             var request = request(new OrderItemRequest("headphones", 1));
 
@@ -250,7 +345,7 @@ class OrderServiceImplTest {
         @Test
         void rejectsIncompleteProductData() {
             when(productClient.getProduct("broken"))
-                    .thenReturn(new ProductDetails("broken", null, 1, "seller-a", List.of(), 5));
+                    .thenReturn(new ProductDetails("broken", null, 1, "seller-a", List.of(), 5, null));
             var request = request(new OrderItemRequest("broken", 1));
 
             assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
@@ -260,7 +355,7 @@ class OrderServiceImplTest {
         @Test
         void rejectsProductWithoutSeller() {
             when(productClient.getProduct("orphan"))
-                    .thenReturn(new ProductDetails("orphan", "Orphan", 1, null, List.of(), 5));
+                    .thenReturn(new ProductDetails("orphan", "Orphan", 1, null, List.of(), 5, null));
             var request = request(new OrderItemRequest("orphan", 1));
 
             assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
@@ -270,7 +365,7 @@ class OrderServiceImplTest {
         @Test
         void rejectsInvalidProductPrice() {
             when(productClient.getProduct("negative"))
-                    .thenReturn(new ProductDetails("negative", "Negative", -1, "seller-a", List.of(), 5));
+                    .thenReturn(new ProductDetails("negative", "Negative", -1, "seller-a", List.of(), 5, null));
             var request = request(new OrderItemRequest("negative", 1));
 
             assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
@@ -286,34 +381,57 @@ class OrderServiceImplTest {
     @Nested
     class Lists {
 
+        private final Pageable firstPage = PageParams.first().toPageable();
+
         @Test
         void getMyOrders_returnsCustomerOrders() {
-            when(orderSearchRepository.findCustomerOrders("customer-1", OrderFilter.none()))
-                    .thenReturn(List.of(order(OrderStatus.PENDING)));
+            when(orderSearchRepository.findCustomerOrders("customer-1", OrderFilter.none(), firstPage))
+                    .thenReturn(new PageImpl<>(List.of(order(OrderStatus.PENDING)), firstPage, 1));
 
-            assertThat(service.getMyOrders(OrderFilter.none(), CUSTOMER))
-                    .singleElement()
+            var page = service.getMyOrders(OrderFilter.none(), PageParams.first(), CUSTOMER);
+
+            assertThat(page.content()).singleElement()
                     .satisfies(response -> assertThat(response.items()).hasSize(2));
+            assertThat(page.page()).isZero();
+            assertThat(page.size()).isEqualTo(PageParams.DEFAULT_SIZE);
+            assertThat(page.totalElements()).isEqualTo(1);
+            assertThat(page.totalPages()).isEqualTo(1);
+        }
+
+        @Test
+        void getMyOrders_passesTheRequestedPage() {
+            var paging = new PageParams(2, 5);
+            when(orderSearchRepository.findCustomerOrders("customer-1", OrderFilter.none(), paging.toPageable()))
+                    .thenReturn(new PageImpl<>(List.of(order(OrderStatus.PENDING)), paging.toPageable(), 11));
+
+            var page = service.getMyOrders(OrderFilter.none(), paging, CUSTOMER);
+
+            assertThat(page.page()).isEqualTo(2);
+            assertThat(page.size()).isEqualTo(5);
+            assertThat(page.totalElements()).isEqualTo(11);
+            assertThat(page.totalPages()).isEqualTo(3);
         }
 
         @Test
         void getSellerOrders_showsOnlyTheSellersItemsAndTotals() {
             var filter = new OrderFilter(OrderStatus.PENDING, null, null, null);
-            when(orderSearchRepository.findSellerOrders("seller-a", filter))
-                    .thenReturn(List.of(order(OrderStatus.PENDING)));
+            when(orderSearchRepository.findSellerOrders("seller-a", filter, firstPage))
+                    .thenReturn(new PageImpl<>(List.of(order(OrderStatus.PENDING)), firstPage, 1));
 
-            assertThat(service.getSellerOrders(filter, SELLER_A)).singleElement().satisfies(response -> {
-                assertThat(response.items()).extracting("sellerId").containsOnly("seller-a");
-                assertThat(response.totalItems()).isEqualTo(2);
-                assertThat(response.totalAmount()).isEqualTo(new BigDecimal("40.00"));
-            });
+            assertThat(service.getSellerOrders(filter, PageParams.first(), SELLER_A).content()).singleElement()
+                    .satisfies(response -> {
+                        assertThat(response.items()).extracting("sellerId").containsOnly("seller-a");
+                        assertThat(response.totalItems()).isEqualTo(2);
+                        assertThat(response.totalAmount()).isEqualTo(new BigDecimal("40.00"));
+                    });
         }
 
         @Test
         void getSellerOrders_requiresSellerRole() {
             var filter = OrderFilter.none();
+            var paging = PageParams.first();
 
-            assertThatThrownBy(() -> service.getSellerOrders(filter, CUSTOMER))
+            assertThatThrownBy(() -> service.getSellerOrders(filter, paging, CUSTOMER))
                     .isInstanceOf(ForbiddenException.class);
             verifyNoInteractions(orderSearchRepository);
         }
@@ -409,6 +527,41 @@ class OrderServiceImplTest {
         }
 
         @Test
+        void cancelling_putsTheItemsBackInStockAfterSaving() {
+            stored(order(OrderStatus.PENDING));
+
+            service.cancelOrder("order-1", CUSTOMER);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<OrderItem>> released = ArgumentCaptor.forClass(List.class);
+            var order = inOrder(orderRepository, productClient);
+            order.verify(orderRepository).save(any(Order.class));
+            order.verify(productClient).releaseStock(released.capture());
+            assertThat(released.getValue()).extracting(OrderItem::productId, OrderItem::quantity)
+                    .containsExactly(org.assertj.core.groups.Tuple.tuple("headphones", 2),
+                            org.assertj.core.groups.Tuple.tuple("cable", 1));
+        }
+
+        @Test
+        void whenSaveFails_stockIsNotReleased() {
+            stored(order(OrderStatus.PENDING));
+            when(orderRepository.save(any(Order.class))).thenThrow(new OptimisticLockingFailureException("race"));
+
+            assertThatThrownBy(() -> service.cancelOrder("order-1", CUSTOMER))
+                    .isInstanceOf(OptimisticLockingFailureException.class);
+            verify(productClient, never()).releaseStock(anyList());
+        }
+
+        @Test
+        void whenReleasingFails_theOrderIsStillCancelled() {
+            stored(order(OrderStatus.CONFIRMED));
+            doThrow(new UpstreamServiceException("Product Service is unreachable while releasing stock"))
+                    .when(productClient).releaseStock(anyList());
+
+            assertThat(service.cancelOrder("order-1", CUSTOMER).status()).isEqualTo(OrderStatus.CANCELLED);
+        }
+
+        @Test
         void onlyTheCustomerCanCancel() {
             stored(order(OrderStatus.PENDING));
 
@@ -481,6 +634,28 @@ class OrderServiceImplTest {
         }
 
         @Test
+        void sellerCancelling_putsTheItemsBackInStock() {
+            stored(order(OrderStatus.PENDING));
+
+            service.updateStatus("order-1", new UpdateOrderStatusRequest(OrderStatus.CANCELLED, null), SELLER_A);
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<OrderItem>> released = ArgumentCaptor.forClass(List.class);
+            verify(productClient).releaseStock(released.capture());
+            // the whole order is cancelled, so every seller's items go back, not only SELLER_A's
+            assertThat(released.getValue()).extracting(OrderItem::productId).containsExactly("headphones", "cable");
+        }
+
+        @Test
+        void otherStatusChanges_doNotTouchStock() {
+            stored(order(OrderStatus.PENDING));
+
+            service.updateStatus("order-1", new UpdateOrderStatusRequest(OrderStatus.CONFIRMED, null), SELLER_A);
+
+            verifyNoInteractions(productClient);
+        }
+
+        @Test
         void invalidTransitionIsConflict() {
             stored(order(OrderStatus.PENDING));
             var request = new UpdateOrderStatusRequest(OrderStatus.DELIVERED, null);
@@ -521,9 +696,9 @@ class OrderServiceImplTest {
     private static Order order(OrderStatus status) {
         Instant placed = Instant.parse("2026-02-01T09:00:00Z");
         List<OrderItem> items = List.of(
-                new OrderItem("headphones", "seller-a", "Headphones", null, new BigDecimal("20.00"), 2,
+                new OrderItem("headphones", "seller-a", "Headphones", "audio", null, new BigDecimal("20.00"), 2,
                         new BigDecimal("40.00")),
-                new OrderItem("cable", "seller-b", "USB Cable", null, new BigDecimal("5.00"), 1,
+                new OrderItem("cable", "seller-b", "USB Cable", "accessories", null, new BigDecimal("5.00"), 1,
                         new BigDecimal("5.00")));
         return Order.builder()
                 .id("order-1")

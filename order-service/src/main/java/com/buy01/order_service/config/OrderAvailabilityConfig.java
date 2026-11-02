@@ -1,6 +1,5 @@
 package com.buy01.order_service.config;
 
-import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,12 +31,13 @@ public class OrderAvailabilityConfig {
         }
 
         @Override
-        public List<OrderResponse> getMyOrders(OrderFilter filter, AuthenticatedUser user) {
+        public PageResponse<OrderResponse> getMyOrders(OrderFilter filter, PageParams paging, AuthenticatedUser user) {
             throw unavailable();
         }
 
         @Override
-        public List<OrderResponse> getSellerOrders(OrderFilter filter, AuthenticatedUser user) {
+        public PageResponse<OrderResponse> getSellerOrders(OrderFilter filter, PageParams paging,
+                AuthenticatedUser user) {
             throw unavailable();
         }
 

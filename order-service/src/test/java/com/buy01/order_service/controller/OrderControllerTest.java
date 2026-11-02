@@ -30,9 +30,11 @@ import com.buy01.order_service.dtos.common.ShippingAddressDto;
 import com.buy01.order_service.dtos.req.CreateOrderRequest;
 import com.buy01.order_service.dtos.req.OrderFilter;
 import com.buy01.order_service.dtos.req.OrderItemRequest;
+import com.buy01.order_service.dtos.req.PageParams;
 import com.buy01.order_service.dtos.req.UpdateOrderStatusRequest;
 import com.buy01.order_service.dtos.response.OrderItemResponse;
 import com.buy01.order_service.dtos.response.OrderResponse;
+import com.buy01.order_service.dtos.response.PageResponse;
 import com.buy01.order_service.dtos.response.ReorderResponse;
 import com.buy01.order_service.dtos.response.StatusChangeResponse;
 import com.buy01.order_service.exception.ConflictException;
@@ -191,25 +193,50 @@ class OrderControllerTest {
 
     @Test
     void getMyOrders_withoutFilters_passesEmptyFilter() throws Exception {
-        when(orderService.getMyOrders(OrderFilter.none(), customer)).thenReturn(List.of(order(OrderStatus.PENDING)));
+        when(orderService.getMyOrders(OrderFilter.none(), PageParams.first(), customer))
+                .thenReturn(page(order(OrderStatus.PENDING)));
 
         mvc.perform(asCustomer(get("/orders/my")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(ORDER_ID));
+                .andExpect(jsonPath("$.content[0].id").value(ORDER_ID))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(PageParams.DEFAULT_SIZE))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1));
+    }
+
+    @Test
+    void getMyOrders_bindsPaging() throws Exception {
+        when(orderService.getMyOrders(OrderFilter.none(), new PageParams(2, 5), customer)).thenReturn(page());
+
+        mvc.perform(asCustomer(get("/orders/my")).param("page", "2").param("size", "5"))
+                .andExpect(status().isOk());
+
+        verify(orderService).getMyOrders(OrderFilter.none(), new PageParams(2, 5), customer);
+    }
+
+    @Test
+    void getMyOrders_withInvalidPaging_returnsValidationError() throws Exception {
+        mvc.perform(asCustomer(get("/orders/my")).param("page", "-1").param("size", "101"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.validationErrors.page").value("page must be 0 or greater"))
+                .andExpect(jsonPath("$.validationErrors.size").value("size must be at most 100"));
+
+        verifyNoInteractions(orderService);
     }
 
     @Test
     void getMyOrders_bindsAllFilters() throws Exception {
         var filter = new OrderFilter(OrderStatus.SHIPPED, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31),
                 "headphones");
-        when(orderService.getMyOrders(filter, customer)).thenReturn(List.of());
+        when(orderService.getMyOrders(filter, PageParams.first(), customer)).thenReturn(page());
 
         mvc.perform(asCustomer(get("/orders/my")).param("status", "SHIPPED").param("from", "2026-01-01")
                         .param("to", "2026-01-31").param("q", "headphones"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+                .andExpect(jsonPath("$.content").isEmpty());
 
-        verify(orderService).getMyOrders(filter, customer);
+        verify(orderService).getMyOrders(filter, PageParams.first(), customer);
     }
 
     @Test
@@ -232,17 +259,17 @@ class OrderControllerTest {
 
     @Test
     void getSellerOrders_returnsOrders() throws Exception {
-        when(orderService.getSellerOrders(new OrderFilter(OrderStatus.PENDING, null, null, null), seller))
-                .thenReturn(List.of(order(OrderStatus.PENDING)));
+        when(orderService.getSellerOrders(new OrderFilter(OrderStatus.PENDING, null, null, null), PageParams.first(),
+                seller)).thenReturn(page(order(OrderStatus.PENDING)));
 
         mvc.perform(asSeller(get("/orders/seller")).param("status", "PENDING"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].items[0].sellerId").value(SELLER_ID));
+                .andExpect(jsonPath("$.content[0].items[0].sellerId").value(SELLER_ID));
     }
 
     @Test
     void getSellerOrders_whenNotSeller_returnsForbidden() throws Exception {
-        when(orderService.getSellerOrders(OrderFilter.none(), customer))
+        when(orderService.getSellerOrders(OrderFilter.none(), PageParams.first(), customer))
                 .thenThrow(new ForbiddenException("Only sellers can view seller orders"));
 
         mvc.perform(asCustomer(get("/orders/seller")))
@@ -389,11 +416,16 @@ class OrderControllerTest {
 
     private static OrderResponse order(OrderStatus status) {
         Instant now = Instant.parse("2026-01-15T10:00:00Z");
-        var item = new OrderItemResponse("product-1", SELLER_ID, "Headphones", "https://img/1.png",
+        var item = new OrderItemResponse("product-1", SELLER_ID, "Headphones", "audio", "https://img/1.png",
                 new BigDecimal("20.00"), 2, new BigDecimal("40.00"));
         var address = new ShippingAddressDto("Jane Doe", "0600000000", "1 Main St", "Casablanca", "20000", "Morocco");
         return new OrderResponse(ORDER_ID, CUSTOMER_ID, status, List.of(item), address,
                 PaymentMethod.CASH_ON_DELIVERY, 2, new BigDecimal("40.00"),
                 List.of(new StatusChangeResponse(OrderStatus.PENDING, now, CUSTOMER_ID, null)), now, now);
+    }
+
+    private static PageResponse<OrderResponse> page(OrderResponse... orders) {
+        return new PageResponse<>(List.of(orders), 0, PageParams.DEFAULT_SIZE, orders.length,
+                orders.length == 0 ? 0 : 1);
     }
 }

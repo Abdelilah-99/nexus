@@ -11,10 +11,16 @@ public record ProductDetails(
         double price,
         String ownerId,
         List<String> images,
-        int quantity) {
+        int quantity,
+        String category) {
 
     public ProductDetails {
         images = images == null ? List.of() : List.copyOf(images);
+    }
+
+    /** Product Service reports products without a category as "uncategorized"; same rule if it's missing. */
+    public String categoryOrDefault() {
+        return category == null || category.isBlank() ? "uncategorized" : category;
     }
 
     public String firstImage() {

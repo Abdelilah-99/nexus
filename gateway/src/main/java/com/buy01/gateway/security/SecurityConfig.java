@@ -56,6 +56,7 @@ public class SecurityConfig {
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         // Enforce allowed headers (subject requirement)
+        // X-User-* are not allowed: the gateway sets them itself from the JWT
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-XSRF-TOKEN", "Idempotency-Key"));
         config.setAllowCredentials(true);
 

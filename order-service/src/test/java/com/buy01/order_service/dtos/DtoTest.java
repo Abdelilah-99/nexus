@@ -80,4 +80,13 @@ class DtoTest {
 
         assertThat(response.validationErrors()).containsEntry("status", "status is required");
     }
+
+    @Test
+    void pageParams_defaultsToTheFirstPage() {
+        var pageable = com.buy01.order_service.dtos.req.PageParams.first().toPageable();
+
+        assertThat(pageable.getPageNumber()).isZero();
+        assertThat(pageable.getPageSize()).isEqualTo(com.buy01.order_service.dtos.req.PageParams.DEFAULT_SIZE);
+        assertThat(new com.buy01.order_service.dtos.req.PageParams(3, 7).toPageable().getOffset()).isEqualTo(21);
+    }
 }

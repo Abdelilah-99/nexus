@@ -59,6 +59,6 @@ class OrderPricingTest {
     }
 
     private static OrderItem item(BigDecimal unitPrice, int quantity) {
-        return new OrderItem("p", "s", "name", null, unitPrice, quantity, OrderPricing.lineTotal(unitPrice, quantity));
+        return new OrderItem("p", "s", "name", "misc", null, unitPrice, quantity, OrderPricing.lineTotal(unitPrice, quantity));
     }
 }

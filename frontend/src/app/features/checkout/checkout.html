@@ -37,6 +37,7 @@
       <span class="d-block mb-3">Order reference: {{ result.id }}</span>
       <span class="d-block mb-3">Pay {{ result.totalAmount | currency:'USD' }} on delivery.</span>
     </output>
+    <a class="me-3" [routerLink]="['/orders', result.id]">View order</a>
     <a routerLink="/products">Continue shopping</a>
   </section>
   <button *ngIf="!cart() && !busy()" class="btn btn-secondary mt-3" (click)="load()">Retry loading checkout</button>

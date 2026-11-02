@@ -150,8 +150,9 @@ public class CartService {
         OrderResponse order;
         try {
             order = orders.create(cart.getPendingRequest(), key, user);
-        } catch (CheckoutRejectedException ex) {
-            resetPending(cart);
+        } catch (OrderRejectedException ex) {
+            // No order exists and retrying cannot create one: let the customer review the cart again.
+            unlock(cart);
             carts.save(cart);
             throw ex;
         }
@@ -165,12 +166,12 @@ public class CartService {
     private void finish(Cart cart, String key) {
         if (key.equals(cart.getPendingKey())) {
             cart.getItems().clear();
-            resetPending(cart);
+            unlock(cart);
             carts.save(cart);
         }
     }
 
-    private void resetPending(Cart cart) {
+    private static void unlock(Cart cart) {
         cart.setPendingKey(null);
         cart.setPendingRequest(null);
         cart.setPendingReview(null);

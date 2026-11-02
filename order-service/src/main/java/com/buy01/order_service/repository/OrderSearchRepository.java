@@ -5,10 +5,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
 
 import com.buy01.order_service.dtos.req.OrderFilter;
@@ -20,17 +23,23 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class OrderSearchRepository {
 
-    /** The lists are not paginated yet, so cap them. */
-    static final int MAX_RESULTS = 200;
+    private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
 
     private final MongoTemplate mongoTemplate;
 
-    public List<Order> findCustomerOrders(String customerId, OrderFilter filter) {
-        return mongoTemplate.find(buildQuery(Criteria.where("customerId").is(customerId), filter), Order.class);
+    public Page<Order> findCustomerOrders(String customerId, OrderFilter filter, Pageable pageable) {
+        return find(Criteria.where("customerId").is(customerId), filter, pageable);
     }
 
-    public List<Order> findSellerOrders(String sellerId, OrderFilter filter) {
-        return mongoTemplate.find(buildQuery(Criteria.where("sellerIds").is(sellerId), filter), Order.class);
+    public Page<Order> findSellerOrders(String sellerId, OrderFilter filter, Pageable pageable) {
+        return find(Criteria.where("sellerIds").is(sellerId), filter, pageable);
+    }
+
+    private Page<Order> find(Criteria owner, OrderFilter filter, Pageable pageable) {
+        Query query = buildQuery(owner, filter);
+        List<Order> orders = mongoTemplate.find(Query.of(query).with(NEWEST_FIRST).with(pageable), Order.class);
+        // The count is skipped when the page alone tells the total (e.g. a first page that is not full)
+        return PageableExecutionUtils.getPage(orders, pageable, () -> mongoTemplate.count(query, Order.class));
     }
 
     Query buildQuery(Criteria owner, OrderFilter filter) {
@@ -59,8 +68,6 @@ public class OrderSearchRepository {
                     Criteria.where("items.productName").regex(Pattern.quote(text), "i")));
         }
 
-        return new Query(new Criteria().andOperator(criteria))
-                .with(Sort.by(Sort.Direction.DESC, "createdAt"))
-                .limit(MAX_RESULTS);
+        return new Query(new Criteria().andOperator(criteria));
     }
 }

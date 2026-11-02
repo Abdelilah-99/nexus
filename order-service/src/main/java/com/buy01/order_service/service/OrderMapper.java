@@ -62,7 +62,7 @@ public class OrderMapper {
     }
 
     private OrderItemResponse toItemResponse(OrderItem item) {
-        return new OrderItemResponse(item.productId(), item.sellerId(), item.productName(), item.imageUrl(),
+        return new OrderItemResponse(item.productId(), item.sellerId(), item.productName(), item.category(), item.imageUrl(),
                 item.unitPrice(), item.quantity(), item.lineTotal());
     }
 

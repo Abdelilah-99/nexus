@@ -21,7 +21,7 @@ import com.buy01.order_service.dtos.common.ShippingAddressDto;
 import com.buy01.order_service.dtos.external.ProductDetails;
 import com.buy01.order_service.dtos.req.*;
 import com.buy01.order_service.dtos.response.OrderResponse;
-import com.buy01.order_service.exception.CheckoutRejectedException;
+import com.buy01.order_service.exception.OrderRejectedException;
 import com.buy01.order_service.repository.*;
 import com.buy01.order_service.security.AuthenticatedUser;
 
@@ -52,7 +52,7 @@ class CheckoutIntegrationTest {
     @BeforeEach void setup() {
         user = new AuthenticatedUser("checkout-test-" + UUID.randomUUID(), List.of("CLIENT"));
         when(products.get("p1")).thenReturn(new ProductClient.Product("p1", "Product", new BigDecimal("10.25"), 10, List.of()));
-        when(products.getProduct("p1")).thenReturn(new ProductDetails("p1", "Product", 10.25, "seller", List.of(), 10));
+        when(products.getProduct("p1")).thenReturn(new ProductDetails("p1", "Product", 10.25, "seller", List.of(), 10, "test"));
         carts.setItem("p1", 2, true, user);
     }
     @Test void confirmedOrderClearsPersistedCartAndReplayCreatesNoDuplicate() {
@@ -64,16 +64,16 @@ class CheckoutIntegrationTest {
         assertThat(carts.checkout(request, "key", user).id()).isEqualTo(order.id());
     }
     @Test void priceRaceCreatesNoOrderAndUnlocksPersistedCart() {
-        when(products.getProduct("p1")).thenReturn(new ProductDetails("p1", "Product", 11.00, "seller", List.of(), 10));
+        when(products.getProduct("p1")).thenReturn(new ProductDetails("p1", "Product", 11.00, "seller", List.of(), 10, "test"));
         assertRejectedAndEditable();
     }
     @Test void stockRaceCreatesNoOrderAndUnlocksPersistedCart() {
-        when(products.getProduct("p1")).thenReturn(new ProductDetails("p1", "Product", 10.25, "seller", List.of(), 1));
+        when(products.getProduct("p1")).thenReturn(new ProductDetails("p1", "Product", 10.25, "seller", List.of(), 1, "test"));
         assertRejectedAndEditable();
     }
     private void assertRejectedAndEditable() {
         var request = new CheckoutRequest(address, carts.review(user).reviewToken());
-        assertThatThrownBy(() -> carts.checkout(request, "key", user)).isInstanceOf(CheckoutRejectedException.class);
+        assertThatThrownBy(() -> carts.checkout(request, "key", user)).isInstanceOf(OrderRejectedException.class);
         var cart = cartRepository.findById(user.userId()).orElseThrow();
         assertThat(cart.getPendingKey()).isNull();
         assertThat(cart.getItems()).containsEntry("p1", 2);
