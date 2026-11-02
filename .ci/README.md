@@ -15,7 +15,7 @@ The persistent SonarQube dashboard at http://localhost:9000 retains Jenkins `mai
 3. Once a qualifying GitHub plan is available (or after an explicitly authorized change to public visibility), apply the prepared rule:
 
    ```sh
-   gh api --method PUT repos/anasbaip/safe-zone/branches/main/protection --input .ci/main-protection.json
+   gh api --method PUT repos/AyyoubMh48/buy-02/branches/main/protection --input .ci/main-protection.json
    ```
 
    This requires the quality check, an up-to-date branch, one independent approval of the latest push, resolved conversations, and applies to administrators. Force pushes and branch deletion are disabled. GitHub currently rejects protected branches on this private repository's plan; the JSON file alone does not enforce merges.
@@ -63,6 +63,6 @@ The pipeline's existing Sonar analysis restriction to `main` remains. Check that
 `github-mr-jenk` can access the repository configured in the JCasC job.
 Do not remove volumes or use `--initialize` on the persistent SonarQube server.
 
-The Orders business implementation still lacks persistence. An application health
-check or passing CI test does not prove that Pay on Delivery persists an order.
-This infrastructure change does not implement that missing business layer.
+The Order Service now persists orders and has real MongoDB integration tests.
+An application health check alone still does not prove that Pay on Delivery works
+end to end; verify the deployed purchase, order-management and analytics flows.

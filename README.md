@@ -1,15 +1,42 @@
-# Buy01 — Microservices Marketplace with CI/CD
-;;
-A full-stack marketplace built with **Spring Boot microservices** and **Angular**, with an automated **Jenkins + SonarQube** pipeline for testing, code analysis, and Docker deployment.
+# Buy02 — E-Commerce Marketplace with CI/CD
 
-Buyers can browse products; sellers can manage their catalog and upload product images. The project also demonstrates service discovery, event-driven communication, security, code coverage, quality gates, and deployment health checks.
+Buy02 extends the Buy01 marketplace with **shopping carts**, **Pay on Delivery checkout**, **order management**, **product search/filtering**, and **customer/seller profile analytics**. It uses **Spring Boot microservices** and **Angular**, with **Jenkins + SonarQube** for automated testing, code analysis, and Docker deployment.
+
+The target experience is browsing → cart → checkout → order tracking, with purchasing and sales dashboards. Some required Buy02 features are still pending; the table below describes the current source code, not a verified deployed release.
+
+## Buy02 scope and implementation status
+
+| Feature | Current implementation | Remaining work |
+| --- | --- | --- |
+| Accounts and profiles | Registration, login, JWT authentication, profile viewing/editing | Verify dashboards against deployed order data |
+| Product discovery | Keywords, category, price and stock filters, sorting, pagination; Angular catalog and MongoDB indexes | Verify behavior and query performance with representative data |
+| Cart | Persistent client cart, add/update/remove/clear, availability checks and totals | Verify full integration and critical end-to-end scenarios |
+| Pay on Delivery | Address → review → confirmation; review tokens, idempotency keys and checkout recovery | Verify retry and failure handling in deployment |
+| Orders | Customer/seller pages, paginated search, details/timeline, cancellation, reorder-to-cart and status updates; category snapshots and stock reservation | Removal/archive behavior and further failure-recovery validation |
+| Customer analytics | Delivered-order spending, order count, units, top products/categories and monthly charts in the profile | Verify live integration and team acceptance of financial rules |
+| Seller analytics | Delivered-order revenue, units sold, best sellers, categories and monthly sales/order trends in profile and seller dashboard | Verify live integration and team acceptance of financial rules |
+| Testing and delivery | Backend/Angular tests, Jenkins pipeline, SonarQube and GitHub quality workflow | Critical-flow e2e coverage and verification of live gates/deployment |
+
+Wishlist and additional payment methods are optional bonuses. Analytics use real order snapshots and authenticated identity. This implementation counts only `DELIVERED` orders for all figures, excluding cancelled and undelivered orders; this treats Pay on Delivery amounts as realized spending/revenue. The team should confirm this policy before merging. Category snapshots are stored on new orders; missing or blank historical categories count as `uncategorized`.
+
+## Team responsibilities
+
+| Developer | Primary ownership |
+| --- | --- |
+| Anass | Cart backend, Angular cart, Pay on Delivery checkout and checkout-to-order integration |
+| Abdelillah | Orders Microservice, shared order contract, lifecycle rules, customer/seller order screens |
+| Ayoub | Product search/filtering, customer and seller analytics APIs, profile dashboards and charts |
+
+All three developers contribute tests, security checks, API documentation, integration testing, feature-branch PRs, reviews, and fixes from SonarQube. Agree on shared contracts before changing checkout/order integration or analytics inputs.
+
+Infrastructure identifiers inherited from Buy01 (such as `buy01-env`, container names, SonarQube keys and Java packages) remain in use. Use the exact names documented below; changing the project title does not rename these resources.
 
 ## At a glance
 
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
 | Frontend | Angular | Marketplace UI for clients and sellers |
-| Backend | Spring Boot | User, Product, Media, Order, Gateway, and Discovery services |
+| Backend | Spring Boot | User, Product, Media, Order (including cart), Gateway, and Discovery services |
 | Data | MongoDB | Application data |
 | Events | Apache Kafka | Asynchronous service events |
 | Media | Cloudinary | Uploaded product images |
@@ -18,7 +45,28 @@ Buyers can browse products; sellers can manage their catalog and upload product 
 | Coverage | JaCoCo, LCOV | Java and frontend test coverage |
 | Infrastructure | Docker Compose + Docker-in-Docker | Isolated services and application deployment |
 
-## How it works
+## Application architecture
+
+```mermaid
+flowchart LR
+    Browser[Angular in browser] --> Nginx[Nginx HTTPS :4200]
+    Nginx -->|/api prefix removed| Gateway[API Gateway]
+    Gateway --> Users[User Service]
+    Gateway --> Products[Product Service]
+    Gateway --> Media[Media Service]
+    Gateway --> Orders[Order Service: cart and orders]
+    Orders -->|Current product data| Products
+    Products -->|Image metadata| Media
+    Products --> Kafka[Kafka]
+    Kafka -->|Product image cleanup| Media
+    Media --> Cloudinary[Cloudinary]
+```
+
+Eureka provides service discovery. Each business service has its own MongoDB database. The gateway validates JWTs, removes incoming identity headers, and forwards authenticated user/role headers. Services enforce role and ownership rules using that context, so internal service reachability is part of the security boundary.
+
+The browser uses same-origin `/api/...` URLs through Nginx. API paths in this README refer to **https://localhost:4200/api**, not direct access to each service.
+
+## CI/CD workflow
 
 ```mermaid
 flowchart TD
@@ -26,7 +74,7 @@ flowchart TD
     GitHub --> Jenkins
     Jenkins --> Tests[Backend and frontend tests]
     Tests --> Reports[JaCoCo and LCOV reports]
-    Reports --> Sonar[Six SonarQube analyses]
+    Reports --> Sonar[Seven SonarQube analyses]
     Sonar --> Gates{All quality gates pass?}
     Gates -->|No| Stop[Stop pipeline]
     Gates -->|Yes| Build[Build Docker images]
@@ -47,7 +95,7 @@ The application runs inside the `jenkins-docker` Docker daemon. The host's norma
 - Sufficient free memory and disk for Jenkins, SonarQube, and builds (approximately 8 GB available RAM is a useful starting point)
 
 SonarQube's Elasticsearch needs a suitable host setting:
-.
+
 ```bash
 sysctl vm.max_map_count
 ```
@@ -61,8 +109,8 @@ If it is below `524288`, ask your system administrator to configure it. This is 
 ### 1. Clone and prepare configuration
 
 ```bash
-git clone https://github.com/anass-asbai/safe-zone.git
-cd safe-zone
+git clone https://github.com/AyyoubMh48/buy-02.git
+cd buy-02
 
 umask 077
 mkdir -p jenkins-lab/jenkins-secrets
@@ -96,7 +144,9 @@ printf '%s\n' "$value" > jenkins-lab/jenkins-secrets/github-pat
 unset value
 ```
 
-The Jenkins job checks out `main` from the repository configured in `jenkins-lab/jcasc/jenkins.yaml`. Update that URL if you use a fork, and push your Jenkinsfile changes before running the job.
+If you already cloned the repository, start with `umask 077` from your checkout instead of cloning again.
+
+The Jenkins job checks out `main` from the repository configured in `jenkins-lab/jcasc/jenkins.yaml`. Set that URL to the repository you intend to deploy (for this checkout, `https://github.com/AyyoubMh48/buy-02.git`), and ensure the GitHub token can read it. Push changes before running the job: local, uncommitted edits are not included. Testing a feature branch requires configuring the job to check out that branch; the default job builds `main`.
 
 ### 2. Generate local HTTPS certificates
 
@@ -197,9 +247,17 @@ A green Jenkins result is meaningful only if the deployment and health-check sta
 
 The browser may warn about the self-signed development certificate.
 
-Test the end-to-end flow: register as a **SELLER**, create a product and upload an image; then register as a **CLIENT** and confirm the product appears. Cloudinary credentials are required for uploads.
+Test the implemented flow:
 
-Then test orders: as the client, add the product to the cart, check out with Pay on Delivery, and open **My orders**. As the seller, open **Orders**, move the order to *Confirmed* then *Shipped* with a note. Back as the client, the order details show the new status in the timeline; *Order again* puts the product back in the cart.
+1. Register as a **SELLER** and create several products with images, different categories, prices and stock quantities. Cloudinary credentials are required for uploads.
+2. Browse `/products` as a visitor or **CLIENT**. Test keyword/category/price/stock filters, sorting, pagination, and empty results.
+3. As a **CLIENT**, add products to `/cart`, change quantities, remove items and check totals.
+4. Open `/checkout`, enter the delivery address, review the order and confirm **Pay on Delivery**. Check the success response and that the cart clears after confirmation.
+5. Open **My orders** as a client, or **Orders** as a seller. Check details, search, status/date filters, pagination, cancellation and order-again actions.
+6. As a seller, advance an eligible order through `CONFIRMED`, `SHIPPED`, and `DELIVERED`. Visit `/seller/dashboard` or `/profile` to see sales analytics. As the client, visit `/profile` to see purchasing analytics.
+7. Apply dates containing the order placement date. Check the totals, top products/categories, and monthly chart. Orders still pending, confirmed, shipped or cancelled must not contribute. For mixed-seller orders, verify each seller sees only their own line amounts.
+
+This is a manual smoke test, not an automated e2e suite. Do not treat health checks alone as proof that purchases work correctly.
 
 Quick checks:
 
@@ -222,9 +280,10 @@ The health response should include `"status":"UP"` when the gateway is healthy.
 | `jenkins-lab/sonar-init/bootstrap.py` | Provisions SonarQube projects, tokens, and webhook |
 | `jenkins-lab/jenkins-secrets/` | Local credentials and certificates — **never commit** |
 | `product-service/`, `user-service/`, `media-service/` | Business microservices |
-| `order-service/` | Cart, Pay on Delivery checkout, and orders ([README](order-service/README.md)) |
+| `order-service/` | Cart, checkout, order persistence, search and lifecycle APIs |
 | `gateway/`, `discovery/` | API routing and service discovery |
 | `frontend/` | Angular marketplace |
+| `.github/workflows/quality.yml`, `.ci/` | GitHub quality workflow, provisioning tests and review/protection documentation |
 
 ## Everyday commands
 
@@ -233,6 +292,8 @@ Start existing infrastructure:
 ```bash
 docker compose -f jenkins-lab/compose.yml up -d --build
 ```
+
+This starts the CI infrastructure using existing configuration. If the application has not been deployed, run `first-pipeline` in Jenkins afterwards. Redeploy code changes through the pipeline. The root `docker-compose.yml` expects prebuilt images tagged with `APP_IMAGE_TAG` and Jenkins-managed certificate paths; it is not a standalone build-and-run shortcut.
 
 Check status and logs:
 
@@ -267,11 +328,17 @@ docker compose -f jenkins-lab/compose.yml stop
 | Coverage report missing | `target/site/jacoco/jacoco.xml` or `frontend/coverage/frontend/lcov.info` |
 | Docker image/container not visible on host | Inspect nested daemon with `docker exec jenkins-docker docker ps` |
 | MongoDB/PostgreSQL login fails after password change | Existing database volumes retain initialized credentials |
+| Angular loads but `/api` calls fail during `npm start` | The Angular development server has no API proxy configured; use the deployed HTTPS application for full-stack testing |
+| Latest edits do not appear after a pipeline run | Jenkins checks out its configured remote branch, not your local working directory |
 
 For a full failure, inspect the **first real error** in Jenkins Console Output, not just the final `Finished: FAILURE` line. Never paste tokens or secret-file contents into issue reports.
 
 ## Important limitations
 
+- Product persistence and Kafka publication are separate operations; failures can leave product and media state inconsistent.
+- Stock reservation and order persistence span services. Compensation failures require reconciliation; consult the Order Service documentation.
+- Order removal/archive is not implemented. The status applies to the whole order, including mixed-seller orders.
+- Analytics support at most 366 days per request and count delivered orders by placement date, not delivery date. Revenue is inferred from delivery status; there is no payment collection ledger.
 - The GitHub webhook needs an externally reachable Jenkins URL; `localhost:8085` is not reachable by GitHub.
 - SonarQube Community Build does not provide native PR/branch analysis. The [GitHub quality workflow](.ci/README.md) performs isolated whole-code scans on every branch and PR without overwriting the main dashboard.
 - Bootstrap assigns the Buy01 Quality Gate: at least 80% overall/new-code coverage, zero overall bugs/vulnerabilities and zero new issues, at most 3% new duplication, and all new security hotspots reviewed. Frontend coverage additionally enforces 80% in four metrics.
@@ -281,6 +348,67 @@ For a full failure, inspect the **first real error** in Jenkins Console Output, 
 ## Quality checks and reviews
 
 See [.ci/README.md](.ci/README.md) for automatic scans, retained reports, required reviews, and the prepared GitHub branch-protection rule. Protected branches still require a qualifying GitHub plan for this private repository.
+
+## Running checks locally
+
+Use a JDK compatible with the build (CI uses Java 21), Node.js (CI uses `24.20.0`) and npm. Maven wrappers are included. These commands run checks; they do not start the full application.
+
+Backend tests, packages and JaCoCo reports, from the repository root:
+
+```bash
+for service in product-service user-service media-service order-service gateway discovery; do
+  (cd "$service" && bash ./mvnw -B clean verify) || break
+done
+```
+
+Frontend tests and production build:
+
+```bash
+cd frontend
+npm ci
+CI=true npm run test:coverage
+npm run build
+```
+
+Individual tests may need environment variables or infrastructure; inspect the first failure and the relevant service configuration. Jenkins supplies the configured application credentials during its build.
+
+`npm start` starts Angular alone at `http://localhost:4200`; there is currently no development API proxy. It also conflicts with the deployed frontend's host port. For full-stack manual testing, use the Docker/Jenkins deployment at **https://localhost:4200**. No dedicated e2e framework is currently configured.
+
+## Cart and checkout API
+
+All endpoints below require an authenticated **CLIENT**. Cart identity comes from the authenticated user, not a user ID supplied by the caller.
+
+| Method | Public path | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/cart` | Read cart with current product information and totals |
+| `POST` | `/api/cart/items` | Add `{ "productId": "...", "quantity": 1 }` |
+| `PUT` | `/api/cart/items/{productId}` | Set quantity with `{ "quantity": 2 }` |
+| `DELETE` | `/api/cart/items/{productId}` | Remove an item |
+| `DELETE` | `/api/cart` | Clear cart |
+| `POST` | `/api/cart/review` | Validate availability and obtain a review token |
+| `POST` | `/api/cart/checkout` | Submit delivery address and review token using an `Idempotency-Key` header |
+
+The cart supports up to 50 distinct products and quantities from 1 to 100 per product, subject to stock checks. Checkout uses cash on delivery. On uncertain failures, retry the same request with the same key; pending checkout data is persisted for recovery.
+
+Mutating gateway requests also require CSRF protection: obtain the token from `GET /api/csrf`, retain its cookie, and send the token in `X-XSRF-TOKEN`. The Angular interceptor handles this automatically. Protected requests use `Authorization: Bearer <token>`.
+
+## Orders API
+
+| Method | Public path | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/orders` | Create a client order; requires `Idempotency-Key` |
+| `GET` | `/api/orders/my` | List the authenticated customer's orders |
+| `GET` | `/api/orders/seller` | List orders containing the authenticated seller's products |
+| `GET` | `/api/orders/{id}` | Read an owned customer order or seller-related order |
+| `PATCH` | `/api/orders/{id}/cancel` | Customer cancellation when the current state permits it |
+| `POST` | `/api/orders/{id}/reorder` | Return prior order items for a repeat purchase |
+| `PATCH` | `/api/orders/{id}/status` | Related seller updates status with optional note |
+
+List filters: `status`, ISO dates `from`/`to` (inclusive), and `q` (order ID or product-name text). Lists also accept `page` and `size` and return paginated responses. Responses contain product/price/category snapshots, totals and status history. Seller responses restrict items and totals to the seller's products.
+
+Allowed transitions: `PENDING → CONFIRMED → SHIPPED → DELIVERED`, with cancellation allowed from `PENDING` or `CONFIRMED`. `DELIVERED` and `CANCELLED` are terminal states. Status is currently stored for the whole order, including orders with multiple sellers.
+
+The Buy02 subject calls for consistent errors shaped as `{ code, message, details }`. Existing services use different error schemas; alignment remains required. Analytics endpoints are documented below.
 
 ## Product categories
 
@@ -325,7 +453,7 @@ The Order Service handles the cart, Pay on Delivery checkout and orders; the Ang
 
 Details:
 
-- [order-service/README.md](order-service/README.md): architecture, security, concepts, data model, API, flows, configuration, tests, limitations, and the proposed analytics contract.
+- [order-service/README.md](order-service/README.md): architecture, security, concepts, data model, API, flows, configuration, tests, limitations, and the analytics contract.
 - [frontend/src/app/features/orders/README.md](frontend/src/app/features/orders/README.md): the order pages, their code and tests.
 
 Improvements from SonarQube during this work:
@@ -334,6 +462,23 @@ Improvements from SonarQube during this work:
 | --- | --- | --- |
 | `java:S5778` | `assertThatThrownBy` lambdas built their arguments inside the lambda, so a test could pass for the wrong exception | arguments are built before the assertion |
 | `Web:S6819` | the cancel confirmation used `role="group"` | replaced by a native `<fieldset>` with a `<legend>` |
+
+## Profile analytics
+
+Customer purchasing analytics appear at `/profile`. Seller sales analytics appear at both `/profile` and `/seller/dashboard`. Both show summary cards, top-five products/categories and monthly charts with readable table values. Date filters, loading/error/retry states and empty results are supported.
+
+| Method | Public path | Access |
+| --- | --- | --- |
+| `GET` | `/api/orders/analytics/me?from=2026-01-01&to=2026-12-31` | Authenticated CLIENT, own orders |
+| `GET` | `/api/orders/analytics/seller?from=2026-01-01&to=2026-12-31` | Authenticated SELLER, own items only |
+
+Both endpoints return `from`, `to`, `countedStatus`, `totalAmount`, `orderCount`, `totalUnits`, `products`, `categories`, and `months`. `totalAmount` means customer spending or seller revenue depending on the endpoint. No caller-supplied user/seller ID is accepted as the analytics identity.
+
+Dates are inclusive UTC order-placement dates. With no dates, the range starts on the first day of the month 11 months before today and ends today. Either bound may be omitted; an omitted `to` means today and an omitted `from` is derived from the effective end date. Ranges may include at most 366 days and must stay between years 1970 and 9998. Invalid dates/ranges return 400; absent authentication returns 401; wrong roles return 403.
+
+Only delivered orders count. Products/categories are ranked by units, amount, then ID/category for deterministic ties; lists contain at most five entries. Product names and categories come from historical snapshots. Monthly totals include zero-filled months, count distinct orders rather than order lines, and use only the authenticated seller's lines for seller reports. Amounts are summed as MongoDB Decimal128/Java BigDecimal; the UI follows the existing order pages' USD display convention.
+
+See [order-service/README.md](order-service/README.md#14-analytics-contract) for the full response contract and tests.
 
 ## Project status
 

@@ -32,6 +32,7 @@ import com.buy01.order_service.client.ProductClient;
 import com.buy01.order_service.dtos.external.ProductDetails;
 import com.buy01.order_service.models.Order;
 import com.buy01.order_service.models.OrderStatus;
+import com.buy01.order_service.models.StatusChange;
 import com.buy01.order_service.repository.OrderRepository;
 import com.jayway.jsonpath.JsonPath;
 
@@ -134,7 +135,7 @@ class OrderFlowIntegrationTest {
 
         Order stored = orders.findById(id).orElseThrow();
         assertThat(stored.getStatus()).isEqualTo(OrderStatus.CANCELLED);
-        assertThat(stored.getStatusHistory()).extracting(change -> change.status())
+        assertThat(stored.getStatusHistory()).extracting(StatusChange::status)
                 .containsExactly(OrderStatus.PENDING, OrderStatus.CANCELLED);
         assertThat(stored.getVersion()).isEqualTo(1);
         verify(products).releaseStock(anyList());

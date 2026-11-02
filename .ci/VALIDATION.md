@@ -84,3 +84,36 @@ Cart service, authentication mechanism, or internal Gateway secret was added.
 The Orders persistence implementation is still absent. Cart/Checkout tests and a
 healthy Order container do not prove that a real order can be created. This task
 leaves all Orders business code untouched.
+
+
+## Profile analytics verification — 2026-11-02
+
+Verified locally on `feat/profile-analytics`, based on `main` at `3662056`:
+
+| Component | Tests passed | Maven verify / frontend build |
+| --- | ---: | --- |
+| Product | 85 | passed |
+| User | 39 | passed |
+| Media | 32 | passed |
+| Order (including analytics) | 201 | passed |
+| Gateway | 25 | passed |
+| Discovery | 2 | passed |
+| Frontend | 208 | passed |
+
+Backend runs used Java 21 and non-production JWT/Cloudinary fixtures. Docker-backed
+order and analytics integration tests ran successfully; none were skipped.
+Frontend coverage passed all four 80% thresholds. Bootstrap/configuration tests
+(22) and shared scanner tests (7) passed; entrypoint Bash syntax and both Sonar
+helper JavaScript syntax checks passed. Scanner-test failures printed by fixtures
+are intentional test inputs, not live quality-gate outcomes.
+
+The latest main Actions run (`41425674624`) passed tests and packaging but failed
+the Order SonarQube gate on `java:S1612` in `OrderFlowIntegrationTest`. This branch
+replaces that lambda with `StatusChange::status`. This fixes the reported source
+finding; only a new live scan can establish the resulting gate status.
+
+Local SonarQube reports UP, but the Jenkins controller container is in Created
+state and has not served its API. No Jenkins build, live Jenkinsfile validation,
+or staging deployment is claimed by this local verification. The branch push
+runs the GitHub Actions quality workflow; Jenkins analysis/deployment remains
+restricted to main. Review the pushed commit's Actions results before merging.
