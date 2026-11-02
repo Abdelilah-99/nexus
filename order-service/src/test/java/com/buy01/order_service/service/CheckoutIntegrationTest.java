@@ -8,10 +8,13 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.mongodb.MongoDBContainer;
 import org.springframework.boot.web.server.context.WebServerApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -25,11 +28,15 @@ import com.buy01.order_service.exception.OrderRejectedException;
 import com.buy01.order_service.repository.*;
 import com.buy01.order_service.security.AuthenticatedUser;
 
-/** Opt in with CHECKOUT_TEST_MONGO_URI pointing to a disposable MongoDB database. */
-@EnabledIfEnvironmentVariable(named = "CHECKOUT_TEST_MONGO_URI", matches = ".+")
+/** Required checkout integration coverage; Docker supplies an isolated MongoDB automatically. */
+@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-    "spring.mongodb.uri=${CHECKOUT_TEST_MONGO_URI}", "eureka.client.enabled=false"})
+    "eureka.client.enabled=false"})
 class CheckoutIntegrationTest {
+    @Container
+    @ServiceConnection
+    static final MongoDBContainer MONGO = new MongoDBContainer("mongo:7");
+
     @Autowired CartService carts;
     @Autowired CartRepository cartRepository;
     @Autowired OrderRepository orders;
