@@ -9,7 +9,7 @@ Buyers can browse products; sellers can manage their catalog and upload product 
 | Layer | Technology | Responsibility |
 | --- | --- | --- |
 | Frontend | Angular | Marketplace UI for clients and sellers |
-| Backend | Spring Boot | User, Product, Media, Gateway, and Discovery services |
+| Backend | Spring Boot | User, Product, Media, Order, Gateway, and Discovery services |
 | Data | MongoDB | Application data |
 | Events | Apache Kafka | Asynchronous service events |
 | Media | Cloudinary | Uploaded product images |
@@ -199,6 +199,8 @@ The browser may warn about the self-signed development certificate.
 
 Test the end-to-end flow: register as a **SELLER**, create a product and upload an image; then register as a **CLIENT** and confirm the product appears. Cloudinary credentials are required for uploads.
 
+Then test orders: as the client, add the product to the cart, check out with Pay on Delivery, and open **My orders**. As the seller, open **Orders**, move the order to *Confirmed* then *Shipped* with a note. Back as the client, the order details show the new status in the timeline; *Order again* puts the product back in the cart.
+
 Quick checks:
 
 ```bash
@@ -220,6 +222,7 @@ The health response should include `"status":"UP"` when the gateway is healthy.
 | `jenkins-lab/sonar-init/bootstrap.py` | Provisions SonarQube projects, tokens, and webhook |
 | `jenkins-lab/jenkins-secrets/` | Local credentials and certificates — **never commit** |
 | `product-service/`, `user-service/`, `media-service/` | Business microservices |
+| `order-service/` | Cart, Pay on Delivery checkout, and orders ([README](order-service/README.md)) |
 | `gateway/`, `discovery/` | API routing and service discovery |
 | `frontend/` | Angular marketplace |
 
@@ -307,6 +310,30 @@ GET /api/products/search?q=phone&category=electronics&minPrice=500&maxPrice=3000
 The response contains `content` (product responses), `totalElements`, `totalPages`, `page`, and `size`. Counts apply to all matches before pagination. No matches produce an empty list and zero total pages; a page beyond the last page is empty and retains the matching totals. Invalid filters return HTTP 400 using the existing validation error response.
 
 Spring Data creates the combined name/description text index and category/price, price, and creation-date indexes on startup when `spring.data.mongodb.auto-index-creation=true` (already configured). MongoDB must be available and its application user must have permission to create indexes. These indexes support the basic search paths; query plans for combined filters/sorts should be checked against representative data. The Angular catalog uses this endpoint for search, category/price/stock filters, sorting, and pagination (12, 24, or 48 items per page). Filter changes reset the page and wait 300 ms before searching; newer changes cancel pending or in-flight requests. Invalid price ranges are shown inline and do not send requests. The existing quick view and add-to-cart actions remain available.
+
+## Orders
+
+The Order Service handles the cart, Pay on Delivery checkout and orders; the Angular app has customer and seller order pages.
+
+| Area | Summary |
+| --- | --- |
+| Customer | cart, checkout, order history with search, status and date filters, order details with a status timeline, cancel (pending or confirmed orders), order again |
+| Seller | orders containing their products (only their own lines and totals), status updates with an optional note |
+| Statuses | `PENDING` → `CONFIRMED` → `SHIPPED` → `DELIVERED`, or `CANCELLED` before shipping; invalid changes return 409 |
+| Safety | product and price snapshots, exact decimal amounts, one order per `Idempotency-Key`, stock reserved in Product Service before saving, optimistic locking against concurrent updates |
+| API | `/api/orders/**` and `/api/cart/**` through the gateway |
+
+Details:
+
+- [order-service/README.md](order-service/README.md): architecture, security, concepts, data model, API, flows, configuration, tests, limitations, and the proposed analytics contract.
+- [frontend/src/app/features/orders/README.md](frontend/src/app/features/orders/README.md): the order pages, their code and tests.
+
+Improvements from SonarQube during this work:
+
+| Rule | Finding | Fix |
+| --- | --- | --- |
+| `java:S5778` | `assertThatThrownBy` lambdas built their arguments inside the lambda, so a test could pass for the wrong exception | arguments are built before the assertion |
+| `Web:S6819` | the cancel confirmation used `role="group"` | replaced by a native `<fieldset>` with a `<legend>` |
 
 ## Project status
 
