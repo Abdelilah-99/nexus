@@ -1,5 +1,5 @@
-<section class="buy-card analytics p-4 mb-4" [attr.aria-label]="role === 'SELLER' ? 'Sales analytics' : 'Purchasing analytics'" [attr.aria-busy]="loading()">
-  <h2 class="h4">{{ role === 'SELLER' ? 'Sales overview' : 'Your purchases' }}</h2>
+<section class="buy-card analytics p-4 mb-4" [attr.aria-label]="audience === 'SELLER' ? 'Sales analytics' : 'Purchasing analytics'" [attr.aria-busy]="loading()">
+  <h2 class="h4">{{ audience === 'SELLER' ? 'Sales overview' : 'Your purchases' }}</h2>
   <p class="text-muted">Delivered orders only, grouped by the date they were placed (UTC). Cancelled and undelivered orders are excluded.</p>
 
   <form [formGroup]="range" (ngSubmit)="load()" class="range-form">
@@ -20,15 +20,15 @@
   @if (data(); as report) {
     <p class="small text-muted">{{ report.from }} – {{ report.to }}</p>
     <dl class="summary-cards">
-      <div><dt>{{ role === 'SELLER' ? 'Revenue' : 'Total spent' }}</dt><dd>{{ report.totalAmount | currency:'USD' }}</dd></div>
+      <div><dt>{{ audience === 'SELLER' ? 'Revenue' : 'Total spent' }}</dt><dd>{{ report.totalAmount | currency:'USD' }}</dd></div>
       <div><dt>Delivered orders</dt><dd>{{ report.orderCount | number }}</dd></div>
-      <div><dt>{{ role === 'SELLER' ? 'Units sold' : 'Units purchased' }}</dt><dd>{{ report.totalUnits | number }}</dd></div>
+      <div><dt>{{ audience === 'SELLER' ? 'Units sold' : 'Units purchased' }}</dt><dd>{{ report.totalUnits | number }}</dd></div>
     </dl>
     @if (report.orderCount === 0) {
       <output class="d-block" aria-live="polite">No delivered orders in this period. Your analytics will appear here after orders are delivered.</output>
     } @else {
-      <h3 class="h5">{{ role === 'SELLER' ? 'Best-selling products' : 'Most purchased products' }}</h3>
-      <section class="table-scroll" aria-label="Top products" tabindex="0">
+      <h3 class="h5">{{ audience === 'SELLER' ? 'Best-selling products' : 'Most purchased products' }}</h3>
+      <section class="table-scroll" aria-label="Top products">
         <table class="table">
           <caption>Top five products by units, then amount</caption>
           <thead><tr><th scope="col">Product</th><th scope="col">Units</th><th scope="col">Amount</th></tr></thead>
@@ -50,8 +50,8 @@
         }
       </ul>
 
-      <h3 class="h5">{{ role === 'SELLER' ? 'Sales and order trends' : 'Monthly spending' }}</h3>
-      <section class="table-scroll" aria-label="Monthly trends" tabindex="0">
+      <h3 class="h5">{{ audience === 'SELLER' ? 'Sales and order trends' : 'Monthly spending' }}</h3>
+      <section class="table-scroll" aria-label="Monthly trends">
         <table class="table">
           <caption>Monthly totals; empty months are included</caption>
           <thead><tr><th scope="col">Month</th><th scope="col">Orders</th><th scope="col">Units</th><th scope="col">Amount</th><th scope="col">Trend</th></tr></thead>

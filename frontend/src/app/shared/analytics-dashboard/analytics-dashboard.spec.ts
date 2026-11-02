@@ -25,7 +25,7 @@ describe('Analytics dashboard', () => {
 
   function render(role: 'CLIENT' | 'SELLER' = 'CLIENT') {
     const fixture = TestBed.createComponent(AnalyticsDashboard);
-    fixture.componentRef.setInput('role', role);
+    fixture.componentRef.setInput('audience', role);
     fixture.detectChanges();
     return fixture;
   }

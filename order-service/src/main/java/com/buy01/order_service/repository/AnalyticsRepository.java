@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.bson.Document;
@@ -39,8 +38,8 @@ public class AnalyticsRepository {
         List<AggregationOperation> stages = new ArrayList<>();
         Document match = new Document(seller ? "sellerIds" : "customerId", userId)
                 .append("status", "DELIVERED")
-                .append("createdAt", new Document("$gte", Date.from(from.atStartOfDay(ZoneOffset.UTC).toInstant()))
-                        .append("$lt", Date.from(to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant())));
+                .append("createdAt", new Document("$gte", from.atStartOfDay(ZoneOffset.UTC).toInstant())
+                        .append("$lt", to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()));
         stages.add(stage("$match", match));
         stages.add(stage("$unwind", "$items"));
         // Matching the parent order is insufficient: mixed-seller orders contain other sellers' lines.

@@ -21,7 +21,7 @@ export function dateRange(control: AbstractControl): ValidationErrors | null {
   styleUrl: './analytics-dashboard.css'
 })
 export class AnalyticsDashboard implements OnChanges, OnDestroy {
-  @Input() role: Role = 'CLIENT';
+  @Input() audience: Role = 'CLIENT';
   readonly data = signal<AnalyticsData | null>(null);
   readonly loading = signal(false);
   readonly error = signal('');
@@ -43,7 +43,7 @@ export class AnalyticsDashboard implements OnChanges, OnDestroy {
     this.error.set('');
     this.data.set(null);
     const { from, to } = this.range.getRawValue();
-    this.request = this.analytics.get(this.role, from, to).subscribe({
+    this.request = this.analytics.get(this.audience, from, to).subscribe({
       next: data => {
         this.data.set(data);
         this.range.patchValue({ from: data.from, to: data.to });

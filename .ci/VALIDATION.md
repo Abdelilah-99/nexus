@@ -117,3 +117,12 @@ state and has not served its API. No Jenkins build, live Jenkinsfile validation,
 or staging deployment is claimed by this local verification. The branch push
 runs the GitHub Actions quality workflow; Jenkins analysis/deployment remains
 restricted to main. Review the pushed commit's Actions results before merging.
+
+The first analytics branch scan (`41451680620`) exposed four additional findings:
+`java:S2143` required `java.time` instead of `java.util.Date` in the aggregation;
+`Web:S6821` treated the component's literal `role="SELLER"` as an invalid ARIA role;
+and two `Web:S6845` findings rejected tabindex on non-interactive table containers.
+The follow-up uses UTC Instant bounds, renames the component input to `audience`,
+and removes those tabindex attributes. The actual MongoDB integration tests verify
+that the driver encodes Instant date bounds correctly. No rules were suppressed
+and no quality-gate thresholds were lowered.
