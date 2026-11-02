@@ -56,6 +56,20 @@ jobs:
             (cd "$service" && bash ./mvnw -B clean verify)
             test -s "$service/target/site/jacoco/jacoco.xml"
           done
+      - name: Browser end-to-end tests
+        env:
+          E2E_NO_SANDBOX: '1'
+        run: |
+          (cd frontend && npx puppeteer browsers install chrome)
+          export PUPPETEER_EXECUTABLE_PATH="$(cd frontend && node --input-type=module -e 'import puppeteer from "puppeteer"; console.log(await puppeteer.executablePath())')"
+          bash scripts/run-local.sh --skip-build
+          (cd frontend && npm run test:e2e)
+      - name: Stop browser test application
+        if: always()
+        run: |
+          if test -f .local/app.env; then
+            docker compose --env-file .local/app.env -p buy02-local -f docker-compose.yml -f compose.local.yml down
+          fi
       - name: Start isolated Docker SonarQube
         run: |
           sudo sysctl -w vm.max_map_count=524288
@@ -78,6 +92,7 @@ jobs:
           retention-days: 30
           path: |
             reports/quality/**
+            frontend/e2e/artifacts/**
             frontend/coverage/frontend/**
             **/target/site/jacoco/**
             **/target/surefire-reports/*.xml

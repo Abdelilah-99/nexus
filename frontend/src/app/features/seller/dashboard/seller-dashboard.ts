@@ -5,11 +5,12 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, FormsModule, Validators } 
 import { ProductService } from '../../../core/services/product';
 import { MediaService } from '../../../core/services/media';
 import { Product } from '../../../core/models/product';
+import { AnalyticsDashboard } from '../../../shared/analytics-dashboard/analytics-dashboard';
 
 @Component({
   selector: 'app-seller-dashboard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, AnalyticsDashboard],
   templateUrl: './seller-dashboard.html',
   styleUrl: './seller-dashboard.css'
 })

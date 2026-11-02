@@ -737,61 +737,55 @@ The frontend build also enforces 80 % statements, branches, functions and lines.
 
 ---
 
-## 14. Analytics contract (proposal)
+## 14. Analytics contract
 
-Customer and seller analytics (Task: Ayoub) are computed from orders, so they depend on the data this service stores. This section is the proposed contract between the two parts; it is open for discussion.
+Analytics are implemented in the Order Service, which owns the source collection. Public calls go through the existing gateway `/api/orders/**` route and JWT-derived identity headers.
 
-### Data available per order
+| Endpoint | Role | Scope |
+| --- | --- | --- |
+| `GET /api/orders/analytics/me` | CLIENT | The authenticated customer's orders |
+| `GET /api/orders/analytics/seller` | SELLER | Only the authenticated seller's lines in related orders |
 
-| Level | Fields |
-|---|---|
-| order | `id`, `customerId`, `status`, `createdAt`, `totalItems`, `totalAmount`, `sellerIds` |
-| item (`items[]`) | `productId`, `productName`, `category`, `sellerId`, `unitPrice`, `quantity`, `lineTotal` |
+### Financial and date rules
 
-- Prices, names and **categories are snapshots** taken when the order was placed, so analytics reflect what was actually bought, even if the product changes later.
-- `category` is recorded for orders placed from this version on. Older orders have no category and should be counted as `uncategorized`, the same name Product Service uses.
-- Amounts are exact decimals (`DECIMAL128`); sums should stay in `BigDecimal`.
+- Only `DELIVERED` orders contribute to **all** amounts, order counts, unit counts, rankings and trends. Cancelled, pending, confirmed and shipped orders are excluded. This is the implementation's Pay on Delivery revenue policy, subject to team review; there is no payment ledger.
+- Filters use `createdAt` (placement date) in UTC, not delivery date. `from`/`to` are inclusive ISO dates.
+- Default: first day of the month 11 months before today through today. Either date can be omitted: `to` defaults to today; `from` defaults relative to the effective end date.
+- Ranges may include at most 366 days and must stay between years 1970 and 9998. Invalid dates/ranges return 400. Unauthenticated requests return 401; wrong roles return 403.
+- Seller totals use only matching `items.sellerId` lines, never the order's overall total. Order counts count distinct orders, not lines.
+- Amounts use historical `lineTotal` snapshots and remain Decimal128/BigDecimal. Names and categories come from snapshots, even when live products have changed or been deleted.
+- Legacy missing/blank categories become `uncategorized`. Category snapshots are not backfilled from current products.
+- Product/category rankings return the top five by units descending, amount descending, then ID/category ascending. Product labels use the latest matching order snapshot.
+- Monthly trends use `YYYY-MM` in UTC, include zero-valued months, and expose order count, units and amount.
 
-### Which orders count
+### Response
 
-| Rule | Proposal |
-|---|---|
-| Cancelled orders | **excluded** from every amount and count (Task: "excluding cancelled orders") |
-| Pending, confirmed, shipped, delivered | included |
-| Seller figures | only the seller's own lines (`items.sellerId == seller`), never the whole order total |
-| Dates | `createdAt`, UTC, like the order filters |
-
-### Proposed endpoints
-
-Served by the Order Service, which owns the `orders` collection, behind the same gateway route and identity headers. Each user only sees their own figures.
-
-`GET /orders/analytics/customer` — `CLIENT`, own orders:
+Both endpoints share this response. `totalAmount` represents customer spending or seller revenue according to the endpoint. No addresses, customer identities or other sellers' lines are returned.
 
 ```json
 {
-  "orderCount": 7,
-  "totalSpent": 412.50,
-  "topProducts":   [ { "productId": "p1", "productName": "Headphones", "quantity": 5, "amount": 99.95 } ],
-  "topCategories": [ { "category": "audio", "quantity": 8, "amount": 160.00 } ]
+  "from": "2026-01-01",
+  "to": "2026-03-31",
+  "countedStatus": "DELIVERED",
+  "totalAmount": 40.00,
+  "orderCount": 1,
+  "totalUnits": 2,
+  "products": [{ "productId": "p1", "name": "Headphones", "units": 2, "amount": 40.00 }],
+  "categories": [{ "category": "audio", "units": 2, "amount": 40.00 }],
+  "months": [
+    { "month": "2026-01", "orderCount": 1, "units": 2, "amount": 40.00 },
+    { "month": "2026-02", "orderCount": 0, "units": 0, "amount": 0 },
+    { "month": "2026-03", "orderCount": 0, "units": 0, "amount": 0 }
+  ]
 }
 ```
 
-`GET /orders/analytics/seller?from=2026-01-01&to=2026-12-31&period=month` — `SELLER`, own lines only:
+### Implementation and verification
 
-```json
-{
-  "orderCount": 31,
-  "revenue": 1840.00,
-  "unitsSold": 96,
-  "bestSellers": [ { "productId": "p1", "productName": "Headphones", "quantity": 40, "amount": 799.60 } ],
-  "trend": [ { "period": "2026-10", "orders": 12, "units": 35, "revenue": 690.00 } ]
-}
-```
+`AnalyticsController` → `AnalyticsService` (roles, defaults, date bounds) → `AnalyticsRepository` (MongoDB aggregation).
 
-Both can be computed with one MongoDB aggregation each (`$match` owner and status → `$unwind: "$items"` → `$group`), using the existing `customer_created` and `seller_created` indexes.
+The pipeline matches indexed ownership/date fields and delivered status before unwinding items, then restricts seller lines and uses `$facet` for totals, products, categories and monthly trends. It aggregates the full matching data, independent of order-list pagination. Existing `customer_created` and `seller_created` indexes support the initial match; inspect query plans with representative production volumes before adding further indexes.
 
-### Open points to agree on
+`AnalyticsIntegrationTest` uses real MongoDB through Testcontainers to cover decimal sums, status/owner/date exclusions, mixed-seller orders, distinct counts, category fallback, empty results and top-five ordering. `AnalyticsControllerTest` checks authentication, role separation, identity scoping, default dates and invalid ranges. Docker must be available to run integration tests; Testcontainers skips them automatically where Docker is unavailable.
 
-1. Should revenue count only `DELIVERED` orders (money actually collected on delivery), or every non-cancelled order as proposed above?
-2. Do the endpoints live in the Order Service (simplest, the data is here) or in a separate analytics service that reads orders through an internal API?
-3. Size of the "top" lists (proposal: 5) and allowed `period` values (proposal: `day`, `week`, `month`).
+The Angular `AnalyticsDashboard` is embedded in `/profile` and the seller dashboard. It provides date controls, cards, product tables, category bars and monthly charts with readable values, loading/error/retry and empty states. API and component tests cover customer/seller scopes, date validation, cancellation of stale requests and rendering. The display uses the existing order pages' USD convention.

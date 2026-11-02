@@ -1,6 +1,6 @@
 # Code quality and review workflow
 
-GitHub Actions runs `Code quality / Tests and SonarQube gates` on every branch push, pull request, daily at 02:17 UTC, and manual dispatch. The workflow uses fresh GitHub-hosted runners, pinned actions, Docker SonarQube plus PostgreSQL, Java 21, and Node 24. It does not use production credentials or deploy the application.
+GitHub Actions runs `Code quality / Tests and SonarQube gates` on every branch push, pull request, daily at 02:17 UTC, and manual dispatch. The workflow uses fresh GitHub-hosted runners, pinned actions, Docker SonarQube plus PostgreSQL, Java 21, and Node 24. It does not use production credentials or deploy to staging/production. It starts an isolated local application stack for Puppeteer browser tests, removes that stack before starting SonarQube, and preserves failed-browser screenshots with the quality artifacts.
 
 Community Build does not offer native PR decoration or branch analysis. Each Actions run therefore scans all seven projects in its own isolated Docker SonarQube server. PR runs scan GitHub's proposed merge commit; branch pushes scan the pushed commit. No PR scan can overwrite the persistent `main` dashboard. This is whole-code validation, not native PR differential analysis. After each run the temporary server is removed. Its metrics, issues, gate results, JaCoCo reports, and frontend HTML/LCOV reports remain in the `quality-<run>-<attempt>` artifact for 30 days. A table is visible in the Actions job summary.
 
@@ -15,7 +15,7 @@ The persistent SonarQube dashboard at http://localhost:9000 retains Jenkins `mai
 3. Once a qualifying GitHub plan is available (or after an explicitly authorized change to public visibility), apply the prepared rule:
 
    ```sh
-   gh api --method PUT repos/anasbaip/safe-zone/branches/main/protection --input .ci/main-protection.json
+   gh api --method PUT repos/AyyoubMh48/buy-02/branches/main/protection --input .ci/main-protection.json
    ```
 
    This requires the quality check, an up-to-date branch, one independent approval of the latest push, resolved conversations, and applies to administrators. Force pushes and branch deletion are disabled. GitHub currently rejects protected branches on this private repository's plan; the JSON file alone does not enforce merges.
@@ -63,6 +63,6 @@ The pipeline's existing Sonar analysis restriction to `main` remains. Check that
 `github-mr-jenk` can access the repository configured in the JCasC job.
 Do not remove volumes or use `--initialize` on the persistent SonarQube server.
 
-The Orders business implementation still lacks persistence. An application health
-check or passing CI test does not prove that Pay on Delivery persists an order.
-This infrastructure change does not implement that missing business layer.
+The Order Service now persists orders and has real MongoDB integration tests.
+An application health check alone still does not prove that Pay on Delivery works
+end to end; verify the deployed purchase, order-management and analytics flows.
