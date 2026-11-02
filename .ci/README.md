@@ -1,6 +1,6 @@
 # Code quality and review workflow
 
-GitHub Actions runs `Code quality / Tests and SonarQube gates` on every branch push, pull request, daily at 02:17 UTC, and manual dispatch. The workflow uses fresh GitHub-hosted runners, pinned actions, Docker SonarQube plus PostgreSQL, Java 21, and Node 24. It does not use production credentials or deploy the application.
+GitHub Actions runs `Code quality / Tests and SonarQube gates` on every branch push, pull request, daily at 02:17 UTC, and manual dispatch. The workflow uses fresh GitHub-hosted runners, pinned actions, Docker SonarQube plus PostgreSQL, Java 21, and Node 24. It does not use production credentials or deploy to staging/production. It starts an isolated local application stack for Puppeteer browser tests, removes that stack before starting SonarQube, and preserves failed-browser screenshots with the quality artifacts.
 
 Community Build does not offer native PR decoration or branch analysis. Each Actions run therefore scans all seven projects in its own isolated Docker SonarQube server. PR runs scan GitHub's proposed merge commit; branch pushes scan the pushed commit. No PR scan can overwrite the persistent `main` dashboard. This is whole-code validation, not native PR differential analysis. After each run the temporary server is removed. Its metrics, issues, gate results, JaCoCo reports, and frontend HTML/LCOV reports remain in the `quality-<run>-<attempt>` artifact for 30 days. A table is visible in the Actions job summary.
 

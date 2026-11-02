@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.client.loadbalancer.LoadBalanced;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -25,7 +26,7 @@ public class ProductClient {
 
     private final RestClient restClient;
 
-    public ProductClient(RestClient.Builder loadBalancedRestClientBuilder,
+    public ProductClient(@LoadBalanced RestClient.Builder loadBalancedRestClientBuilder,
             @Value("${product-service.base-url}") String baseUrl) {
         this.restClient = loadBalancedRestClientBuilder.baseUrl(baseUrl).build();
     }

@@ -25,6 +25,7 @@ import com.buy_01.media.events.ImageUploadedEvent;
 import com.buy_01.media.events.ProductImagesChangedEvent;
 import com.buy_01.media.exception.ForbiddenException;
 import com.buy_01.media.exception.MediaNotFoundException;
+import com.buy_01.media.exception.MediaStorageException;
 import com.buy_01.media.model.dto.MediaRespDto;
 import com.buy_01.media.model.entity.MediaMetaData;
 import com.buy_01.media.repository.MediaMetaDataRepository;
@@ -78,11 +79,12 @@ class MediaServiceTest {
     }
 
     @Test
-    void uploadImage_ioFailure_throwsRuntimeException() throws Exception {
+    void uploadImage_storageFailurePropagatesWithoutSaving() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "pic.png", "image/png", new byte[]{1});
-        when(cloudinaryStorageService.uploadFile(file)).thenThrow(new java.io.IOException("boom"));
+        when(cloudinaryStorageService.uploadFile(file)).thenThrow(new MediaStorageException(new java.io.IOException("boom")));
 
-        assertThrows(RuntimeException.class, () -> mediaService.uploadImage(file, "owner"));
+        assertThrows(MediaStorageException.class, () -> mediaService.uploadImage(file, "owner"));
+        org.mockito.Mockito.verifyNoInteractions(repository, kafkaTemplate);
     }
 
     @Test

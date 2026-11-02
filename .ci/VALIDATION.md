@@ -126,3 +126,34 @@ The follow-up uses UTC Instant bounds, renames the component input to `audience`
 and removes those tabindex attributes. The actual MongoDB integration tests verify
 that the driver encodes Instant date bounds correctly. No rules were suppressed
 and no quality-gate thresholds were lowered.
+
+## Real browser testing and local startup — 2026-11-02
+
+Added the host-Docker local runner, separate `buy02-local` Compose overlay, direct
+HTTP builder for Eureka with an explicitly qualified load-balanced Product client,
+and Puppeteer scenarios using the real HTTPS frontend/gateway/services/databases.
+The browser suite creates exact-ID fixtures, runs serially, checks cleanup, and
+never uploads images to Cloudinary. Local fixture writes are restricted to the
+`buy02-local` Compose project.
+
+Local results before pushing:
+
+- Browser scenarios: **5 passed**, covering search/filtering/pagination, mixed-seller
+  cart and checkout, delivery and ownership-scoped analytics, cancellation exclusion,
+  inclusive UTC dates, invalid ranges and mobile viewport.
+- Angular: **209 tests passed**, coverage thresholds passed, production build passed.
+- Media: **37 tests passed** and Maven verify passed. Provider/network upload and
+  deletion failures return a controlled 502 message; the HTTP test checks that
+  provider details are absent, and the Angular test checks that a failed upload
+  keeps the draft without saving a product.
+- Order: **202 tests passed**, including HTTP-client builder wiring and real MongoDB
+  integration tests. Local registration/cart/analytics checks also passed after
+  separating the direct Eureka builder from the Product client's load-balanced one.
+- Provisioning/configuration tests: **22 passed**; scanner/report tests: **7 passed**.
+- Local Compose configuration, shell/JavaScript syntax, README links, and diff
+  whitespace checks passed.
+
+GitHub Actions now builds/starts the local app and runs browser tests after backend
+packaging, stops that stack before SonarQube, and retains failure screenshots.
+This local report does not claim the new Actions job or a staging deployment has
+passed; inspect the resulting remote run before merging.

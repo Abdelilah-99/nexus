@@ -15,7 +15,7 @@ The target experience is browsing → cart → checkout → order tracking, with
 | Orders | Customer/seller pages, paginated search, details/timeline, cancellation, reorder-to-cart and status updates; category snapshots and stock reservation | Removal/archive behavior and further failure-recovery validation |
 | Customer analytics | Delivered-order spending, order count, units, top products/categories and monthly charts in the profile | Verify live integration and team acceptance of financial rules |
 | Seller analytics | Delivered-order revenue, units sold, best sellers, categories and monthly sales/order trends in profile and seller dashboard | Verify live integration and team acceptance of financial rules |
-| Testing and delivery | Backend/Angular tests, Jenkins pipeline, SonarQube and GitHub quality workflow | Critical-flow e2e coverage and verification of live gates/deployment |
+| Testing and delivery | Backend/Angular tests, Jenkins pipeline, SonarQube and GitHub quality workflow | Verify the new browser job on CI and the staging deployment |
 
 Wishlist and additional payment methods are optional bonuses. Analytics use real order snapshots and authenticated identity. This implementation counts only `DELIVERED` orders for all figures, excluding cancelled and undelivered orders; this treats Pay on Delivery amounts as realized spending/revenue. The team should confirm this policy before merging. Category snapshots are stored on new orders; missing or blank historical categories count as `uncategorized`.
 
@@ -102,7 +102,39 @@ sysctl vm.max_map_count
 
 If it is below `524288`, ask your system administrator to configure it. This is a **host** setting, not a Docker cache problem.
 
-## Quick start — fresh installation
+## Run this checkout locally without Jenkins
+
+Use this path to test a feature branch with the host Docker daemon. It uses separate `buy02-local-*` containers, networks and database volumes; Jenkins deployment remains a separate workflow.
+
+Requirements: Docker Engine with Compose v2, Java 21, Node.js/npm and OpenSSL. Ports 4200, 8444, 9092 and the database ports in `docker-compose.yml` must be available. Stop the failing `jenkins-docker` container first if it occupies port 4200; other containers using those ports must also be stopped or reconfigured.
+
+From the repository root:
+
+```bash
+bash scripts/run-local.sh
+```
+
+The script builds backend JARs and Angular, generates private development credentials and self-signed certificates under ignored `.local/`, builds Docker images, and waits for the stack to become healthy. Open **https://localhost:4200** and accept the local certificate warning. Register a CLIENT or SELLER; this stack starts with empty databases.
+
+Set real `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` in `.local/app.env`, then rerun the script to enable image uploads. Without these values, accounts, catalog reads and empty analytics can be tested, but product image uploads will fail. Do not replace database passwords after the local volumes have been initialized.
+
+If the JARs and Angular build already match the current code, skip rebuilding those artifacts:
+
+```bash
+bash scripts/run-local.sh --skip-build
+```
+
+Inspect or stop this local stack:
+
+```bash
+docker compose --env-file .local/app.env -p buy02-local -f docker-compose.yml -f compose.local.yml ps
+docker compose --env-file .local/app.env -p buy02-local -f docker-compose.yml -f compose.local.yml logs --tail=100
+docker compose --env-file .local/app.env -p buy02-local -f docker-compose.yml -f compose.local.yml stop
+```
+
+Keep `.local/` private and preserve it between restarts. The instructions below describe the full Jenkins/SonarQube installation instead.
+
+## Quick start — Jenkins fresh installation
 
 > Commands below are for **Bash on Linux**, from the repository root. This is a fresh-install guide: do not overwrite existing secrets or delete volumes when updating an existing installation.
 
@@ -257,7 +289,7 @@ Test the implemented flow:
 6. As a seller, advance an eligible order through `CONFIRMED`, `SHIPPED`, and `DELIVERED`. Visit `/seller/dashboard` or `/profile` to see sales analytics. As the client, visit `/profile` to see purchasing analytics.
 7. Apply dates containing the order placement date. Check the totals, top products/categories, and monthly chart. Orders still pending, confirmed, shipped or cancelled must not contribute. For mixed-seller orders, verify each seller sees only their own line amounts.
 
-This is a manual smoke test, not an automated e2e suite. Do not treat health checks alone as proof that purchases work correctly.
+These steps are the manual smoke test. The automated browser suite below covers search, checkout, delivery and analytics; health checks alone do not establish that purchases work.
 
 Quick checks:
 
@@ -372,7 +404,32 @@ npm run build
 
 Individual tests may need environment variables or infrastructure; inspect the first failure and the relevant service configuration. Jenkins supplies the configured application credentials during its build.
 
-`npm start` starts Angular alone at `http://localhost:4200`; there is currently no development API proxy. It also conflicts with the deployed frontend's host port. For full-stack manual testing, use the Docker/Jenkins deployment at **https://localhost:4200**. No dedicated e2e framework is currently configured.
+`npm start` starts Angular alone at `http://localhost:4200`; there is currently no development API proxy. It also conflicts with the deployed frontend's host port. For full-stack manual testing, use the Docker/Jenkins deployment at **https://localhost:4200**. Real-browser end-to-end tests are available through `npm run test:e2e`, as described below.
+
+## Browser end-to-end tests
+
+Start the local application from this checkout with `bash scripts/run-local.sh`, then:
+
+```bash
+cd frontend
+npm run test:e2e
+```
+
+The suite uses the existing Puppeteer dependency and Node's test runner. It selects `PUPPETEER_EXECUTABLE_PATH` when set, then `/usr/bin/google-chrome` if installed, otherwise Puppeteer's installed browser. If needed, install Chrome with `npx puppeteer browsers install chrome`. Environments where Chrome's sandbox cannot run can explicitly use `E2E_NO_SANDBOX=1 npm run test:e2e`; CI sets this for its disposable runner.
+
+Tests run against **https://localhost:4200**, require the `buy02-local-*` containers, and refuse fixture writes to a different Compose project. They register fresh browser accounts, insert uniquely named product fixtures into the local Product MongoDB, and remove their exact account/product/order/cart/receipt records afterwards. Production data and Cloudinary are not used. Product fixtures bypass image upload; Cloudinary upload behavior is covered separately by storage-error tests and manual integration testing.
+
+Five scenarios cover real browser requests through Angular → Nginx → Gateway → services → MongoDB:
+
+- Keyword/category/price/stock filters, sorting, pagination reset, invalid ranges and empty results.
+- Mixed-seller cart, quantity edits, Pay on Delivery checkout and cart clearing; pending orders contribute zero analytics.
+- Seller confirmation/shipping/delivery, customer totals, seller-only line totals, and ownership/role restrictions.
+- Customer cancellation of a second order without changing delivered analytics.
+- Inclusive placement-day filters, excluded dates, invalid date ranges and dashboard use at mobile width.
+
+Tests run serially because later steps use the order created by checkout. Failures save screenshots under ignored `frontend/e2e/artifacts/`; CI retains these with its quality artifacts. GitHub Actions starts a fresh local stack, runs the browser suite, and stops it before starting SonarQube to keep memory usage bounded. The app remains running after a local test run.
+
+Cloudinary storage failures now return HTTP 502 with a controlled message instead of exposing provider errors as unhandled 500 responses. Angular displays that message through its existing upload error handling.
 
 ## Cart and checkout API
 
