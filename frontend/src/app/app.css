@@ -78,3 +78,17 @@
   color: var(--bg-surface-alt);
   user-select: none;
 }
+
+.app-main {
+  width: 100%;
+}
+.app-footer {
+  padding: 2.5rem 0;
+  background: #eaf1ed;
+}
+.app-footer-brand {
+  letter-spacing: -0.04em;
+}
+.skip-to-content {
+  color: white;
+}

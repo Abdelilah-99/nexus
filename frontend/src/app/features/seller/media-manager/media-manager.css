@@ -2,7 +2,6 @@
   min-height: 80vh;
 }
 
-/* Physical Space Upload Bay (Darkroom Station) */
 .atelier-darkroom-bay {
   background-color: var(--bg-surface);
   border: 1px solid var(--bg-surface-alt);
@@ -38,7 +37,6 @@
   border: 1px solid var(--bg-surface-alt);
 }
 
-/* Asymmetric Gallery-Wall Grid for Media */
 .atelier-media-grid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -83,7 +81,6 @@
   }
 }
 
-/* Card & Full-Bleed Image */
 .media-gallery-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--bg-surface-alt);
@@ -135,4 +132,24 @@
 .darkroom-modal-frame {
   background-color: var(--bg-primary);
   border-color: var(--bg-surface-alt) !important;
+}
+
+.atelier-darkroom-bay,
+.darkroom-inspection-plate {
+  background: white;
+  border-radius: 20px;
+  box-shadow: var(--buy-shadow-sm);
+}
+.darkroom-intake-well {
+  background: #f0f7f3;
+  border: 2px dashed #a8cabe;
+  border-radius: 16px;
+}
+.media-gallery-card {
+  border-radius: 16px;
+  box-shadow: var(--buy-shadow-sm);
+}
+.media-zoom-overlay {
+  background: #16352eb3;
+  color: white;
 }

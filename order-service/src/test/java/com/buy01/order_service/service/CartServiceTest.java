@@ -112,6 +112,15 @@ class CartServiceTest {
         assertThat(service.get(user).pending().key()).isEqualTo("key");
         assertThat(service.checkout(request, "key", user).id()).isEqualTo("order-1");
     }
+    @Test void definitiveRejectionUnlocksCartWithoutRemovingItems() {
+        var request = request();
+        when(orders.create(any(), anyString(), any())).thenThrow(new CheckoutRejectedException("price changed"));
+        assertThatThrownBy(() -> service.checkout(request, "key", user)).isInstanceOf(CheckoutRejectedException.class);
+        assertThat(cart.getPendingKey()).isNull();
+        assertThat(cart.getPendingRequest()).isNull();
+        assertThat(cart.getItems()).containsEntry("p1", 2);
+        assertThat(service.setItem("p1", 1, false, user).items().get(0).quantity()).isEqualTo(1);
+    }
     @Test void changedAddressCannotReuseCompletedKey() {
         var request = request(); when(orders.create(any(), anyString(), any())).thenReturn(order());
         service.checkout(request, "key", user);

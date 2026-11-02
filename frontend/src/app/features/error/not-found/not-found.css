@@ -74,3 +74,9 @@
     width: 100%;
   }
 }
+
+:host {
+  display: block;
+  padding: 3rem 1rem;
+  background: #f4f7f6;
+}

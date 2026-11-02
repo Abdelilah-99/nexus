@@ -62,6 +62,13 @@ class OrdersClientTest {
         status = 503; body = "{\"message\":\"Orders unavailable\"}";
         assertThatThrownBy(() -> client.create(request, "key", user)).isInstanceOf(UpstreamServiceException.class);
     }
+    @Test void definitiveValidationFailuresAreDistinguishedFromUncertainFailures() {
+        for (int rejected : new int[]{400, 409}) {
+            status = rejected;
+            assertThatThrownBy(() -> client.create(request, "key", user))
+                .isInstanceOf(com.buy01.order_service.exception.CheckoutRejectedException.class);
+        }
+    }
     @Test void acceptedButUnconfirmedResponseIsNotSuccess() {
         status = 202;
         assertThatThrownBy(() -> client.create(request, "key", user)).isInstanceOf(UpstreamServiceException.class);

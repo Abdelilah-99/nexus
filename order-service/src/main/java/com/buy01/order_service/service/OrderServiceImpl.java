@@ -61,6 +61,10 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> items = mergeQuantities(request.items()).entrySet().stream()
                 .map(entry -> snapshot(entry.getKey(), entry.getValue()))
                 .toList();
+        if (request.expectedTotal() != null
+                && request.expectedTotal().compareTo(OrderPricing.totalAmount(items)) != 0) {
+            throw new ConflictException("Prices changed. Review your cart before confirming again");
+        }
         Instant now = clock.instant();
 
         Order order = Order.builder()

@@ -11,6 +11,8 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import com.buy01.order_service.exception.CheckoutRejectedException;
 import com.buy01.order_service.dtos.req.CreateOrderRequest;
 import com.buy01.order_service.dtos.response.OrderResponse;
 import com.buy01.order_service.security.AuthenticatedUser;
@@ -35,6 +37,12 @@ public class OrdersClient {
                 throw new UpstreamServiceException("Orders Service did not confirm the requested Pay on Delivery order; cart retained");
             }
             return order;
+        } catch (RestClientResponseException ex) {
+            // Only validation responses from the Orders contract prove no order was created.
+            if (ex.getStatusCode().value() == 400 || ex.getStatusCode().value() == 409) {
+                throw new CheckoutRejectedException("Order rejected. Stock or prices changed; review your cart again");
+            }
+            throw new UpstreamServiceException("Order creation is not confirmed. Retry with the same checkout key");
         } catch (RestClientException ex) {
             throw new UpstreamServiceException("Order creation is not confirmed. Your cart is retained; retry with the same checkout key");
         }
