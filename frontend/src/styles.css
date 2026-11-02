@@ -546,7 +546,6 @@ main.container-xl {
 }
 .form-control:focus,
 .form-select:focus {
-  background-color: var(--bg-primary);
   border-color: var(--accent);
   color: var(--text-primary);
   box-shadow: var(--focus-ring);
@@ -574,13 +573,11 @@ main.container-xl {
   border: 1px solid var(--bg-surface-alt);
 }
 .alert-danger {
-  background-color: var(--bg-surface) !important;
   border-color: var(--danger) !important;
   background: #fff1f2 !important;
   color: #982b36 !important;
 }
 .alert-success {
-  background-color: var(--bg-surface) !important;
   border-color: var(--success) !important;
   background: #eaf7ee !important;
   color: #24603d !important;
@@ -638,9 +635,6 @@ img {
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;

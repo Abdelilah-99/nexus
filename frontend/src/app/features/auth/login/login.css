@@ -6,7 +6,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-primary);
   min-height: 76vh;
   background: #edf4f0;
   padding: 3rem 1rem;

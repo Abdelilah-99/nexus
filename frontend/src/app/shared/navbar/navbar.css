@@ -94,7 +94,6 @@
 }
 
 .buy-navbar-wrapper {
-  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--bg-surface-alt);
   z-index: 1030;
   background: #ffffffed;
@@ -112,7 +111,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-primary);
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -160,7 +158,6 @@
 .buy-user-pill {
   color: var(--text-primary);
   text-decoration: none;
-  background-color: var(--bg-primary);
   border: 1px solid var(--bg-surface-alt);
   padding: 0.35rem 0.75rem;
   transition: border-color var(--transition-fast);
