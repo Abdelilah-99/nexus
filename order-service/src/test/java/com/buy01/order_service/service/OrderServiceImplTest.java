@@ -100,6 +100,15 @@ class OrderServiceImplTest {
         }
 
         @Test
+        void changedReviewedTotalIsRejectedBeforePersistence() {
+            var changed = new CreateOrderRequest(List.of(new OrderItemRequest("headphones", 2)), ADDRESS,
+                    PaymentMethod.CASH_ON_DELIVERY, new BigDecimal("30.00"));
+            assertThatThrownBy(() -> service.createOrder(changed, KEY, CUSTOMER))
+                    .isInstanceOf(ConflictException.class);
+            verify(orderRepository, never()).insert(any(Order.class));
+        }
+
+        @Test
         void snapshotsProductsAndComputesTotals() {
             OrderResponse response = service.createOrder(
                     request(new OrderItemRequest("headphones", 2), new OrderItemRequest("cable", 3)), KEY, CUSTOMER);
