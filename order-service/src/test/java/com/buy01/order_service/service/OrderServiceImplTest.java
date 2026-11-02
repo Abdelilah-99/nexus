@@ -235,6 +235,26 @@ class OrderServiceImplTest {
         }
 
         @Test
+        void expectedTotalThatStillMatches_isAccepted() {
+            var request = new CreateOrderRequest(List.of(new OrderItemRequest("headphones", 2)), ADDRESS, null,
+                    new BigDecimal("39.98"));
+
+            assertThat(service.createOrder(request, KEY, CUSTOMER).totalAmount()).isEqualTo(new BigDecimal("39.98"));
+        }
+
+        @Test
+        void changedTotal_isRefusedBeforeAnyStockIsTaken() {
+            var request = new CreateOrderRequest(List.of(new OrderItemRequest("headphones", 2)), ADDRESS, null,
+                    new BigDecimal("35.00"));
+
+            assertThatThrownBy(() -> service.createOrder(request, KEY, CUSTOMER))
+                    .isInstanceOf(ConflictException.class)
+                    .hasMessageContaining("the total is now 39.98");
+            verify(productClient, never()).reserveStock(anyList());
+            verify(orderRepository, never()).insert(any(Order.class));
+        }
+
+        @Test
         void whenStockIsTakenMeanwhile_nothingIsSaved() {
             doThrow(new BadRequestException("Not enough stock for Headphones: 0 available"))
                     .when(productClient).reserveStock(anyList());

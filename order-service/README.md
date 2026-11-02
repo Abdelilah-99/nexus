@@ -390,7 +390,7 @@ Idempotency-Key: 3f2b8c1e-9d4a-4c7e-b1f0-2a6d8e5c7b90
 | `items[].quantity` | 1 to 100, and at most 100 per product after merging |
 | `shippingAddress.*` | all required; `fullName`, `city`, `country` ≤ 100, `phone` ≤ 30, `street` ≤ 200, `postalCode` ≤ 20 |
 | `paymentMethod` | optional, `CASH_ON_DELIVERY` (the only method) |
-| `expectedTotal` | optional; sent by the cart checkout so it can verify the result (see [limitations](#13-known-limitations)) |
+| `expectedTotal` | optional; the total the customer confirmed. If the current prices give a different total, the order is refused with **409** before any stock is taken |
 
 **201** (`OrderResponse`):
 
@@ -519,6 +519,8 @@ Customer          Angular                 Order Service                         
 ```
 
 If anything fails after step 2, the cart stays locked with the same key, and the frontend retries with **the same `Idempotency-Key`**: the order step returns the existing order instead of creating a second one.
+
+If the order step **refuses** the checkout for good (a 4xx, for example prices changed since the review so `expectedTotal` no longer matches, or a product sold out), `OrdersClient` raises `OrderRejectedException`, the cart is unlocked with its items kept, and the customer gets **409** and reviews the cart again.
 
 ### 8.2 Creating an order (`OrderServiceImpl.createOrder`)
 
@@ -722,7 +724,6 @@ The frontend build also enforces 80 % statements, branches, functions and lines.
 | Limitation | Impact | Possible follow-up |
 |---|---|---|
 | Stock is reserved before the order is saved, **not in one transaction** | a crash between the two steps, or a failed release, leaves units taken (logged at `ERROR`) | outbox pattern or event-based reservation |
-| `expectedTotal` is **checked only by the cart after the order exists** | if a price changes between review and checkout, the order is still created and stock reserved, but checkout reports failure; every retry returns the same order, so the cart stays locked | have `createOrder` reject a mismatching `expectedTotal` (409) before reserving stock |
 | Services **trust `X-User-*` from anyone on the Docker network** | another compromised container could act as any user, or call `/internal/stock` | a shared secret between gateway and services, or JWT verification in each service |
 | Checkout creates the order over HTTP **inside the same service** (`OrdersClient` → `/orders`) | an extra network hop that passes identity headers itself | call `OrderService` directly when both live in one service |
 | A seller editing a product sets `quantity` directly | an edit at the same moment as an order can overwrite that order's decrement | change stock by delta |

@@ -65,6 +65,12 @@ public class OrderServiceImpl implements OrderService {
         List<OrderItem> items = mergeQuantities(request.items()).entrySet().stream()
                 .map(entry -> snapshot(entry.getKey(), entry.getValue()))
                 .toList();
+        BigDecimal totalAmount = OrderPricing.totalAmount(items);
+        if (request.expectedTotal() != null && request.expectedTotal().compareTo(totalAmount) != 0) {
+            // Checked before reserving stock: the customer confirmed a different amount.
+            throw new ConflictException("Prices changed since you reviewed your cart: the total is now "
+                    + totalAmount + ". Review your cart again.");
+        }
         Instant now = clock.instant();
 
         Order order = Order.builder()
@@ -77,7 +83,7 @@ public class OrderServiceImpl implements OrderService {
                 .paymentMethod(request.paymentMethod() == null ? PaymentMethod.CASH_ON_DELIVERY
                         : request.paymentMethod())
                 .totalItems(OrderPricing.totalItems(items))
-                .totalAmount(OrderPricing.totalAmount(items))
+                .totalAmount(totalAmount)
                 .statusHistory(List.of(new StatusChange(OrderStatus.PENDING, now, user.userId(), "Order placed")))
                 .createdAt(now)
                 .updatedAt(now)

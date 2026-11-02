@@ -147,7 +147,15 @@ public class CartService {
                     PaymentMethod.CASH_ON_DELIVERY, current.totalAmount()));
             cart = carts.save(cart); // Optimistic version claims this snapshot across service instances.
         }
-        OrderResponse order = orders.create(cart.getPendingRequest(), key, user);
+        OrderResponse order;
+        try {
+            order = orders.create(cart.getPendingRequest(), key, user);
+        } catch (OrderRejectedException ex) {
+            // No order exists and retrying cannot create one: let the customer review the cart again.
+            unlock(cart);
+            carts.save(cart);
+            throw ex;
+        }
         // Persist acknowledgement before clearing. Retrying after a crash can finish
         // clearing safely.
         receipts.save(new CheckoutReceipt(receiptId, user.userId(), key, request, order));
@@ -158,13 +166,17 @@ public class CartService {
     private void finish(Cart cart, String key) {
         if (key.equals(cart.getPendingKey())) {
             cart.getItems().clear();
-            cart.setPendingKey(null);
-            cart.setPendingRequest(null);
-            cart.setPendingReview(null);
-            cart.setPendingAddress(null);
-            cart.setPendingToken(null);
+            unlock(cart);
             carts.save(cart);
         }
+    }
+
+    private static void unlock(Cart cart) {
+        cart.setPendingKey(null);
+        cart.setPendingRequest(null);
+        cart.setPendingReview(null);
+        cart.setPendingAddress(null);
+        cart.setPendingToken(null);
     }
 
     private String digest(String text) {

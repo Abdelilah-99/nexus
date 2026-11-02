@@ -10,6 +10,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.*;
 import com.buy01.order_service.dtos.common.ShippingAddressDto;
 import com.buy01.order_service.dtos.req.*;
+import com.buy01.order_service.exception.OrderRejectedException;
 import com.buy01.order_service.exception.UpstreamServiceException;
 import com.buy01.order_service.models.PaymentMethod;
 import com.buy01.order_service.security.AuthenticatedUser;
@@ -61,6 +62,16 @@ class OrdersClientTest {
     @Test void unavailableOrdersIsNotReportedAsSuccess() {
         status = 503; body = "{\"message\":\"Orders unavailable\"}";
         assertThatThrownBy(() -> client.create(request, "key", user)).isInstanceOf(UpstreamServiceException.class);
+    }
+    @Test void definitiveRefusalIsReportedWithItsReason() {
+        status = 409; body = "{\"message\":\"Prices changed since you reviewed your cart\"}";
+        assertThatThrownBy(() -> client.create(request, "key", user))
+            .isInstanceOf(OrderRejectedException.class).hasMessage("Prices changed since you reviewed your cart");
+    }
+    @Test void refusalWithoutReadableReasonUsesGenericMessage() {
+        status = 400; body = "not json";
+        assertThatThrownBy(() -> client.create(request, "key", user))
+            .isInstanceOf(OrderRejectedException.class).hasMessageContaining("Review your cart");
     }
     @Test void acceptedButUnconfirmedResponseIsNotSuccess() {
         status = 202;

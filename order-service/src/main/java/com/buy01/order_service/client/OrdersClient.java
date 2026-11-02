@@ -9,11 +9,14 @@ import com.buy01.order_service.models.PaymentMethod;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import com.buy01.order_service.dtos.external.UpstreamError;
 import com.buy01.order_service.dtos.req.CreateOrderRequest;
 import com.buy01.order_service.dtos.response.OrderResponse;
 import com.buy01.order_service.security.AuthenticatedUser;
+import com.buy01.order_service.exception.OrderRejectedException;
 import com.buy01.order_service.exception.UpstreamServiceException;
 
 @Component
@@ -35,10 +38,23 @@ public class OrdersClient {
                 throw new UpstreamServiceException("Orders Service did not confirm the requested Pay on Delivery order; cart retained");
             }
             return order;
+        } catch (HttpClientErrorException ex) {
+            // 4xx: the order was refused and will be refused again; it is not an uncertain outcome.
+            throw new OrderRejectedException(rejectionMessage(ex));
         } catch (RestClientException ex) {
             throw new UpstreamServiceException("Order creation is not confirmed. Your cart is retained; retry with the same checkout key");
         }
     }
+    private static String rejectionMessage(HttpClientErrorException ex) {
+        try {
+            UpstreamError error = ex.getResponseBodyAs(UpstreamError.class);
+            if (error != null && error.message() != null) return error.message();
+        } catch (RuntimeException unreadable) {
+            // fall through to the generic message
+        }
+        return "The order was refused. Review your cart and try again";
+    }
+
     /** An arbitrary successful body is not sufficient evidence to clear a customer's cart. */
     private boolean matchesRequest(OrderResponse order, CreateOrderRequest request, AuthenticatedUser user) {
         if (order == null || order.id() == null || order.id().isBlank()
