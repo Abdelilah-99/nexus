@@ -1,28 +1,18 @@
-.atelier-auth-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(80vh - 120px);
-  padding: 3rem 1.5rem;
-  background-color: var(--bg-primary);
-}
-
-.atelier-auth-floating-form {
-  width: 100%;
-  max-width: 400px;
-  background: transparent;
-}
-
 .atelier-auth-header {
   text-align: left;
 }
 
 .atelier-auth-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-primary);
   min-height: 76vh;
   background: #edf4f0;
   padding: 3rem 1rem;
 }
 .atelier-auth-floating-form {
+  width: 100%;
   max-width: 540px;
   background: white;
   border: 1px solid var(--bg-surface-alt);
