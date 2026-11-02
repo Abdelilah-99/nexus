@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, before, describe, it } from 'node:test';
 import {
   addProduct, api, baseUrl, catalog, category, checkout, cleanup, clickText,
-  keyword, launch, openAccount, productIds, report, saveFailure, search, seedProducts
+  keyword, launch, observedGet, openAccount, productIds, report, saveFailure, search, seedProducts
 } from './support.mjs';
 
 describe('Real marketplace browser flows', { concurrency: false, timeout: 300000 }, () => {
@@ -81,7 +81,11 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
       await clickText(seller.page, 'button[type="submit"]', 'Update status');
       const response = await pending;
       assert.equal(response.status(), 200);
-      assert.equal((await response.json()).status, status);
+      const stored = await api(seller.page, `/orders/${delivered.id}`);
+      assert.equal(stored.status, 200);
+      assert.equal(stored.body.status, status);
+      await seller.page.waitForFunction(label => document.querySelector('main header')?.textContent.includes(label), {},
+        status[0] + status.slice(1).toLowerCase());
       await seller.page.waitForFunction(() => !document.querySelector('#next-status')?.disabled);
     }
     const customer = await report(client.page, 'CLIENT', { amount: 31, orders: 1, units: 3 });
@@ -110,7 +114,9 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
     await clickText(client.page, 'button', 'Yes, cancel it');
     const response = await pending;
     assert.equal(response.status(), 200);
-    assert.equal((await response.json()).status, 'CANCELLED');
+    const stored = await api(client.page, `/orders/${cancelled.id}`);
+    assert.equal(stored.status, 200);
+    assert.equal(stored.body.status, 'CANCELLED');
     await report(client.page, 'CLIENT', { amount: 31, orders: 1, units: 3 });
     await report(seller.page, 'SELLER', { amount: 20, orders: 1, units: 2 });
   });
@@ -140,7 +146,9 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
       await clickText(page, 'app-analytics-dashboard button', 'Apply dates');
       const response = await pending;
       assert.equal(response.status(), 200);
-      return response.json();
+      const result = await observedGet(page, response);
+      await page.waitForFunction(amount => document.querySelector('app-analytics-dashboard dl dd')?.textContent.trim() === `$${amount.toFixed(2)}`, {}, result.totalAmount);
+      return result;
     }
     await page.setViewport({ width: 390, height: 844 });
     assert.equal((await apply(placed, placed)).totalAmount, 31);

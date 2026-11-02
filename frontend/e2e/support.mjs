@@ -52,9 +52,9 @@ export async function openAccount(browser, role, label) {
   await page.locator('form button[type="submit"]').click();
   const registered = await response;
   assert.equal(registered.status(), 201, 'Browser registration must succeed');
-  const { user } = await registered.json();
+  await page.waitForFunction(expected => location.pathname === expected && localStorage.getItem('buy01_user'), {}, role === 'SELLER' ? '/seller/dashboard' : '/products');
+  const user = await page.evaluate(() => JSON.parse(localStorage.getItem('buy01_user')));
   userIds.push(user.id);
-  await page.waitForFunction(expected => location.pathname === expected, {}, role === 'SELLER' ? '/seller/dashboard' : '/products');
   return { page, context, user };
 }
 
@@ -126,17 +126,27 @@ export async function api(page, path, method = 'GET', body) {
   }, path, method, body);
 }
 
+/** Verify observed reads in the page, independent of DevTools' evictable response-body buffer. */
+export async function observedGet(page, response) {
+  assert.equal(response.request().method(), 'GET', 'Only read-only requests may be repeated for verification');
+  const url = new URL(response.url());
+  const result = await api(page, url.pathname.replace(/^\/api/, '') + url.search);
+  assert.equal(result.status, 200);
+  return result.body;
+}
+
 export async function search(page, filters, action) {
   const pending = page.waitForResponse(response => {
     const url = new URL(response.url());
-    return url.pathname === '/api/products/search' && Object.entries(filters)
+    return response.request().method() === 'GET' && url.pathname === '/api/products/search' && Object.entries(filters)
       .every(([key, value]) => url.searchParams.get(key) === String(value));
   });
   await action();
   const response = await pending;
   assert.equal(response.status(), 200);
-  const result = await response.json();
-  await page.waitForFunction(count => document.querySelectorAll('.atelier-gallery-grid .product-title').length === count, {}, result.content.length);
+  const result = await observedGet(page, response);
+  await page.waitForFunction(names => JSON.stringify([...document.querySelectorAll('.atelier-gallery-grid .product-title')]
+    .map(node => node.textContent.trim())) === JSON.stringify(names), {}, result.content.map(product => product.name));
   return result;
 }
 
@@ -174,8 +184,11 @@ export async function checkout(page) {
   await clickText(page, 'button', 'Confirm Pay on Delivery');
   const response = await pending;
   assert.equal(response.status(), 200, 'Checkout must succeed through the real gateway');
-  const order = await response.json();
   await page.waitForFunction(() => document.body.textContent.includes('Order confirmed'));
+  const orderPath = await page.$eval('a[href^="/orders/"]', link => new URL(link.href).pathname);
+  const stored = await api(page, orderPath);
+  assert.equal(stored.status, 200, 'The order shown by checkout must be persisted');
+  const order = stored.body;
   const cart = await api(page, '/cart');
   assert.equal(cart.status, 200);
   assert.equal(cart.body.items.length, 0, 'Confirmed checkout clears the cart');
@@ -184,11 +197,11 @@ export async function checkout(page) {
 
 export async function report(page, role, expected, path = '/profile') {
   const endpoint = role === 'SELLER' ? 'seller' : 'me';
-  const pending = page.waitForResponse(r => new URL(r.url()).pathname === `/api/orders/analytics/${endpoint}`);
+  const pending = page.waitForResponse(r => r.request().method() === 'GET' && new URL(r.url()).pathname === `/api/orders/analytics/${endpoint}`);
   await page.goto(`${baseUrl}${path}`, { waitUntil: 'networkidle0' });
   const response = await pending;
   assert.equal(response.status(), 200);
-  const result = await response.json();
+  const result = await observedGet(page, response);
   assert.equal(result.totalAmount, expected.amount);
   assert.equal(result.orderCount, expected.orders);
   assert.equal(result.totalUnits, expected.units);

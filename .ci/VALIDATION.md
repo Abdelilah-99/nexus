@@ -164,3 +164,11 @@ but the independently installed runner Chrome reported CDP `Network.getResponseB
 errors in three assertions. CI now installs the Chrome build selected by Puppeteer
 and logs its version. All five scenarios also passed locally with that exact
 Chrome build (`152.0.7977.42`), in addition to the existing local system browser.
+
+The matching browser alone did not eliminate the CI-only CDP buffer failures
+(`41466637876`). Browser tests now verify rendered product ordering/dashboard
+values and use read-only API requests to check persisted results. Observed mutation
+status codes still must succeed, and POST/PATCH actions are never replayed. All
+five revised scenarios passed locally with the matching Chrome build. This avoids
+depending on DevTools retaining network response bodies while preserving the
+business assertions and the real browser/application/database path.
