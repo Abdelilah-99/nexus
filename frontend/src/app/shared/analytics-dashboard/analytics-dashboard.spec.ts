@@ -38,7 +38,7 @@ describe('Analytics dashboard', () => {
     expect(text).toContain('Chair snapshot');
     expect(text).toContain('furniture');
     expect(text).toContain('2026-02');
-    expect(text).toContain('Delivered orders only');
+    expect(text).toContain('Delivered products only');
     expect(fixture.componentInstance.range.value).toEqual({ from: report.from, to: report.to });
   });
 

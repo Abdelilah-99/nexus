@@ -642,8 +642,7 @@ class OrderServiceImplTest {
             @SuppressWarnings("unchecked")
             ArgumentCaptor<List<OrderItem>> released = ArgumentCaptor.forClass(List.class);
             verify(productClient).releaseStock(released.capture());
-            // the whole order is cancelled, so every seller's items go back, not only SELLER_A's
-            assertThat(released.getValue()).extracting(OrderItem::productId).containsExactly("headphones", "cable");
+            assertThat(released.getValue()).extracting(OrderItem::productId).containsExactly("headphones");
         }
 
         @Test

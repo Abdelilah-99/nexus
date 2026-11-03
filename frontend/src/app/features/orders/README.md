@@ -255,7 +255,7 @@ Placed Oct 24, 2026 · Pay on delivery
 ```
 Update status
 [New status ▾ Shipped / Cancelled]  [Note for the customer (optional)]  [Update status]
-The status applies to the whole order, including other sellers' products.
+The status applies to your products in this order.
 ```
 
 - The dropdown lists only `NEXT_STATUSES[current status]`, e.g. `CONFIRMED` → `Shipped`, `Cancelled`.
@@ -337,7 +337,7 @@ The UI was delivered as a stack of small pull requests, each one building on the
 
 | Limitation | Why | Possible follow-up |
 |---|---|---|
-| One status for the whole order | the backend stores one status per order | per-seller status once the backend supports it |
+| Delivery progress | each seller has an independent status and timeline; the customer sees per-product status and seller histories | audit legacy mixed orders whose actual delivery was not recorded |
 | Dates are UTC days | the server filters by UTC | send the browser's time zone |
 | Order again adds items one request at a time | the cart API adds one product per call | a bulk "add items" endpoint |
 | No live updates | the page shows the order as loaded | refresh after a while, or server-sent events |

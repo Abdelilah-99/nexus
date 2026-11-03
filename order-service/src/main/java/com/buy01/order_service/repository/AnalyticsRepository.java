@@ -37,7 +37,6 @@ public class AnalyticsRepository {
     public AnalyticsResponse summarize(String userId, boolean seller, LocalDate from, LocalDate to) {
         List<AggregationOperation> stages = new ArrayList<>();
         Document match = new Document(seller ? "sellerIds" : "customerId", userId)
-                .append("status", "DELIVERED")
                 .append("createdAt", new Document("$gte", from.atStartOfDay(ZoneOffset.UTC).toInstant())
                         .append("$lt", to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()));
         stages.add(stage("$match", match));
@@ -46,6 +45,14 @@ public class AnalyticsRepository {
         if (seller) {
             stages.add(stage("$match", new Document("items.sellerId", userId)));
         }
+        // Count a line only when its own seller delivered it. Old orders retain their
+        // historical overall status until they acquire explicit fulfillment records.
+        Document ownParts = new Document("$filter", new Document("input",
+                new Document("$ifNull", List.of("$fulfillments", List.of())))
+                .append("as", "part").append("cond", new Document("$eq", List.of("$$part.sellerId", "$items.sellerId"))));
+        stages.add(stage("$set", new Document("deliveredPart", new Document("$arrayElemAt", List.of(ownParts, 0)))));
+        Document lineStatus = new Document("$ifNull", List.of("$deliveredPart.status", "$status"));
+        stages.add(stage("$match", new Document("$expr", new Document("$eq", List.of(lineStatus, "DELIVERED")))));
         stages.add(stage("$facet", new Document("totals", totals())
                 .append("products", products()).append("categories", categories()).append("months", months())));
         Document result = mongo.aggregate(Aggregation.newAggregation(stages), "orders", Document.class)

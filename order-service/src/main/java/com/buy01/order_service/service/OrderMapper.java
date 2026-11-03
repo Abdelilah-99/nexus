@@ -12,13 +12,14 @@ import com.buy01.order_service.dtos.response.StatusChangeResponse;
 import com.buy01.order_service.models.Order;
 import com.buy01.order_service.models.OrderItem;
 import com.buy01.order_service.models.ShippingAddress;
+import com.buy01.order_service.models.SellerFulfillment;
 
 @Component
 public class OrderMapper {
 
     /** Full order, as the customer who placed it sees it. */
     public OrderResponse toResponse(Order order) {
-        return toResponse(order, order.getItems());
+        return toResponse(order, order.getItems(), OrderProgress.parts(order), false);
     }
 
     /**
@@ -29,7 +30,8 @@ public class OrderMapper {
         List<OrderItem> ownItems = order.getItems().stream()
                 .filter(item -> sellerId.equals(item.sellerId()))
                 .toList();
-        return toResponse(order, ownItems);
+        return toResponse(order, ownItems, OrderProgress.parts(order).stream()
+                .filter(part -> sellerId.equals(part.sellerId())).toList(), true);
     }
 
     public ShippingAddress toModel(ShippingAddressDto dto) {
@@ -43,22 +45,24 @@ public class OrderMapper {
                 .toList();
     }
 
-    private OrderResponse toResponse(Order order, List<OrderItem> items) {
+    private OrderResponse toResponse(Order order, List<OrderItem> items, List<SellerFulfillment> parts, boolean seller) {
         return new OrderResponse(
                 order.getId(),
                 order.getCustomerId(),
-                order.getStatus(),
+                seller ? parts.get(0).status() : order.getStatus(),
                 items.stream().map(this::toItemResponse).toList(),
                 toDto(order.getShippingAddress()),
                 order.getPaymentMethod(),
                 OrderPricing.totalItems(items),
                 OrderPricing.totalAmount(items),
-                order.getStatusHistory().stream()
+                (seller ? parts.get(0).statusHistory() : order.getStatusHistory()).stream()
                         .map(change -> new StatusChangeResponse(change.status(), change.changedAt(),
                                 change.changedBy(), change.note()))
                         .toList(),
                 order.getCreatedAt(),
-                order.getUpdatedAt());
+                order.getUpdatedAt(),
+                parts,
+                !seller && OrderProgress.cancellable(parts));
     }
 
     private OrderItemResponse toItemResponse(OrderItem item) {

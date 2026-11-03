@@ -55,7 +55,7 @@
         </div>
       </form>
       <p *ngIf="nextStatuses(o).length" class="small text-muted mt-2 mb-0">
-        The status applies to the whole order, including other sellers' products.
+        The status applies to your products in this order.
       </p>
     </section>
 
@@ -67,7 +67,7 @@
             <table class="table buy-table align-middle mb-0">
               <thead>
                 <tr><th scope="col">Product</th><th scope="col" class="text-end">Unit price</th>
-                  <th scope="col" class="text-end">Qty</th><th scope="col" class="text-end">Total</th></tr>
+                  <th scope="col">Delivery status</th><th scope="col" class="text-end">Qty</th><th scope="col" class="text-end">Total</th></tr>
               </thead>
               <tbody>
                 <tr *ngFor="let item of o.items">
@@ -81,13 +81,14 @@
                     </div>
                   </td>
                   <td class="text-end">{{ item.unitPrice | currency: 'USD' }}</td>
+                  <td><span [class]="statusBadge(productStatus(o, item.sellerId))">{{ statusLabel(productStatus(o, item.sellerId)) }}</span></td>
                   <td class="text-end">{{ item.quantity }}</td>
                   <td class="text-end">{{ item.lineTotal | currency: 'USD' }}</td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr>
-                  <th scope="row" colspan="2">Total</th>
+                  <th scope="row" colspan="3">Total</th>
                   <td class="text-end">{{ o.totalItems }}</td>
                   <td class="text-end fw-semibold">{{ o.totalAmount | currency: 'USD' }}</td>
                 </tr>
@@ -107,6 +108,21 @@
             {{ o.shippingAddress.country }}<br>
             {{ o.shippingAddress.phone }}
           </address>
+        </section>
+
+        <section *ngIf="!seller && o.fulfillments?.length" class="buy-card p-3" aria-labelledby="deliveries-title">
+          <h2 id="deliveries-title" class="h5">Delivery progress by seller</h2>
+          <p class="small text-muted">Each seller updates their own products independently.</p>
+          <div *ngFor="let part of o.fulfillments; let i = index" class="mb-3">
+            <h3 class="h6">Seller {{ i + 1 }} · #{{ shortId(part.sellerId) }}</h3>
+            <ol class="list-unstyled mb-0">
+              <li *ngFor="let change of part.statusHistory" class="border-start ps-3 pb-2">
+                <span [class]="statusBadge(change.status)">{{ statusLabel(change.status) }}</span>
+                <span class="d-block small text-muted">{{ change.changedAt | date: 'medium' }}</span>
+                <span *ngIf="change.note" class="d-block small">{{ change.note }}</span>
+              </li>
+            </ol>
+          </div>
         </section>
 
         <section class="buy-card p-3" aria-labelledby="timeline-title">

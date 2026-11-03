@@ -32,7 +32,25 @@ public class OrderSearchRepository {
     }
 
     public Page<Order> findSellerOrders(String sellerId, OrderFilter filter, Pageable pageable) {
-        return find(Criteria.where("sellerIds").is(sellerId), filter, pageable);
+        Criteria owner = Criteria.where("sellerIds").is(sellerId);
+        List<Criteria> constraints = new ArrayList<>();
+        constraints.add(owner);
+        if (filter.status() != null) {
+            constraints.add(new Criteria().orOperator(
+                    Criteria.where("fulfillments").elemMatch(Criteria.where("sellerId").is(sellerId)
+                            .and("status").is(filter.status())),
+                    new Criteria().andOperator(new Criteria().orOperator(
+                            Criteria.where("fulfillments").exists(false), Criteria.where("fulfillments").is(null),
+                            Criteria.where("fulfillments").size(0)), Criteria.where("status").is(filter.status()))));
+        }
+        if (filter.q() != null && !filter.q().isBlank()) {
+            String text = filter.q().trim();
+            constraints.add(new Criteria().orOperator(Criteria.where("id").is(text),
+                    Criteria.where("items").elemMatch(Criteria.where("sellerId").is(sellerId)
+                            .and("productName").regex(Pattern.quote(text), "i"))));
+        }
+        return find(constraints.size() == 1 ? owner : new Criteria().andOperator(constraints),
+                new OrderFilter(null, filter.from(), filter.to(), null), pageable);
     }
 
     private Page<Order> find(Criteria owner, OrderFilter filter, Pageable pageable) {

@@ -7,6 +7,7 @@ import java.util.List;
 import com.buy01.order_service.dtos.common.ShippingAddressDto;
 import com.buy01.order_service.models.OrderStatus;
 import com.buy01.order_service.models.PaymentMethod;
+import com.buy01.order_service.models.SellerFulfillment;
 
 public record OrderResponse(
         String id,
@@ -19,10 +20,14 @@ public record OrderResponse(
         BigDecimal totalAmount,
         List<StatusChangeResponse> statusHistory,
         Instant createdAt,
-        Instant updatedAt) {
+        Instant updatedAt,
+        List<SellerFulfillment> fulfillments,
+        Boolean cancellable) {
 
     public OrderResponse {
         items = items == null ? null : List.copyOf(items);
         statusHistory = statusHistory == null ? null : List.copyOf(statusHistory);
+        fulfillments = fulfillments == null ? List.of() : List.copyOf(fulfillments);
+        cancellable = Boolean.TRUE.equals(cancellable);
     }
 }

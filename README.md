@@ -17,7 +17,7 @@ The target experience is browsing → cart → checkout → order tracking, with
 | Seller analytics | Delivered-order revenue, units sold, best sellers, categories and monthly sales/order trends in profile and seller dashboard | Verify live integration and team acceptance of financial rules |
 | Testing and delivery | Backend/Angular tests, Jenkins pipeline, SonarQube and GitHub quality workflow | Verify the new browser job on CI and the staging deployment |
 
-Wishlist and additional payment methods are optional bonuses. Analytics use real order snapshots and authenticated identity. This implementation counts only `DELIVERED` orders for all figures, excluding cancelled and undelivered orders; this treats Pay on Delivery amounts as realized spending/revenue. The team should confirm this policy before merging. Category snapshots are stored on new orders; missing or blank historical categories count as `uncategorized`.
+Wishlist and additional payment methods are optional bonuses. Analytics use real order snapshots and authenticated identity. This implementation counts only products from `DELIVERED` seller fulfillments for all figures, excluding cancelled and undelivered products; this treats Pay on Delivery amounts as realized spending/revenue. The team should confirm this policy before merging. Category snapshots are stored on new orders; missing or blank historical categories count as `uncategorized`.
 
 ## Team responsibilities
 
@@ -287,7 +287,7 @@ Test the implemented flow:
 4. Open `/checkout`, enter the delivery address, review the order and confirm **Pay on Delivery**. Check the success response and that the cart clears after confirmation.
 5. Open **My orders** as a client, or **Orders** as a seller. Check details, search, status/date filters, pagination, cancellation and order-again actions.
 6. As a seller, advance an eligible order through `CONFIRMED`, `SHIPPED`, and `DELIVERED`. Visit `/seller/dashboard` or `/profile` to see sales analytics. As the client, visit `/profile` to see purchasing analytics.
-7. Apply dates containing the order placement date. Check the totals, top products/categories, and monthly chart. Orders still pending, confirmed, shipped or cancelled must not contribute. For mixed-seller orders, verify each seller sees only their own line amounts.
+7. Apply dates containing the order placement date. Check the totals, top products/categories, and monthly chart. Products whose seller fulfillment is still pending, confirmed, shipped or cancelled must not contribute. For mixed-seller orders, verify each seller sees only their own line amounts.
 
 These steps are the manual smoke test. The automated browser suite below covers search, checkout, delivery and analytics; health checks alone do not establish that purchases work.
 
@@ -369,8 +369,8 @@ For a full failure, inspect the **first real error** in Jenkins Console Output, 
 
 - Product persistence and Kafka publication are separate operations; failures can leave product and media state inconsistent.
 - Stock reservation and order persistence span services. Compensation failures require reconciliation; consult the Order Service documentation.
-- Order removal/archive is not implemented. The status applies to the whole order, including mixed-seller orders.
-- Analytics support at most 366 days per request and count delivered orders by placement date, not delivery date. Revenue is inferred from delivery status; there is no payment collection ledger.
+- Order removal/archive is not implemented. Mixed-seller orders have separate seller delivery progress; historical records without that data use their original status.
+- Analytics support at most 366 days per request and count delivered seller lines by order placement date, not delivery date. Revenue is inferred from delivery status; there is no payment collection ledger.
 - The GitHub webhook needs an externally reachable Jenkins URL; `localhost:8085` is not reachable by GitHub.
 - SonarQube Community Build does not provide native PR/branch analysis. The [GitHub quality workflow](.ci/README.md) performs isolated whole-code scans on every branch and PR without overwriting the main dashboard.
 - Bootstrap assigns the Buy01 Quality Gate: at least 80% overall/new-code coverage, zero overall bugs/vulnerabilities and zero new issues, at most 3% new duplication, and all new security hotspots reviewed. Frontend coverage additionally enforces 80% in four metrics.
@@ -463,7 +463,7 @@ Mutating gateway requests also require CSRF protection: obtain the token from `G
 
 List filters: `status`, ISO dates `from`/`to` (inclusive), and `q` (order ID or product-name text). Lists also accept `page` and `size` and return paginated responses. Responses contain product/price/category snapshots, totals and status history. Seller responses restrict items and totals to the seller's products.
 
-Allowed transitions: `PENDING → CONFIRMED → SHIPPED → DELIVERED`, with cancellation allowed from `PENDING` or `CONFIRMED`. `DELIVERED` and `CANCELLED` are terminal states. Status is currently stored for the whole order, including orders with multiple sellers.
+Allowed transitions: `PENDING → CONFIRMED → SHIPPED → DELIVERED`, with cancellation allowed from `PENDING` or `CONFIRMED`. `DELIVERED` and `CANCELLED` are terminal states. Each seller has a separate fulfillment and timeline. Customer status is `IN_PROGRESS` when parts differ, `DELIVERED` only when all parts are delivered, and `COMPLETED` when delivered and cancelled parts finish together. Seller responses and filters use only their own fulfillment.
 
 The Buy02 subject calls for consistent errors shaped as `{ code, message, details }`. Existing services use different error schemas; alignment remains required. Analytics endpoints are documented below.
 
@@ -533,7 +533,7 @@ Both endpoints return `from`, `to`, `countedStatus`, `totalAmount`, `orderCount`
 
 Dates are inclusive UTC order-placement dates. With no dates, the range starts on the first day of the month 11 months before today and ends today. Either bound may be omitted; an omitted `to` means today and an omitted `from` is derived from the effective end date. Ranges may include at most 366 days and must stay between years 1970 and 9998. Invalid dates/ranges return 400; absent authentication returns 401; wrong roles return 403.
 
-Only delivered orders count. Products/categories are ranked by units, amount, then ID/category for deterministic ties; lists contain at most five entries. Product names and categories come from historical snapshots. Monthly totals include zero-filled months, count distinct orders rather than order lines, and use only the authenticated seller's lines for seller reports. Amounts are summed as MongoDB Decimal128/Java BigDecimal; the UI follows the existing order pages' USD display convention.
+Only delivered seller lines count. An order with at least one delivered line counts once in the relevant customer or seller report. Products/categories are ranked by units, amount, then ID/category for deterministic ties; lists contain at most five entries. Product names and categories come from historical snapshots. Monthly totals include zero-filled months, count distinct orders rather than order lines, and use only the authenticated seller's lines for seller reports. Amounts are summed as MongoDB Decimal128/Java BigDecimal; the UI follows the existing order pages' USD display convention.
 
 See [order-service/README.md](order-service/README.md#14-analytics-contract) for the full response contract and tests.
 
@@ -542,3 +542,5 @@ See [order-service/README.md](order-service/README.md#14-analytics-contract) for
 The setup and pipeline above describe the **intended reproducible workflow**. Verify the live Jenkins build, quality-gate results, deployment, and application functionality before describing a release as successful.
 
 
+
+The remaining team tasks and acceptance checks are tracked in [docs/FINISHING-TASKS.md](docs/FINISHING-TASKS.md).

@@ -214,4 +214,21 @@ describe('OrderDetails', () => {
     page.updateStatus();
     expect(page.error()).toBe('The status could not be updated. Please retry.');
   });
+  it('uses seller fulfillment status and server cancellation eligibility for a mixed order', () => {
+    const page = create('CLIENT');
+    const order = sampleOrder({
+      status: 'IN_PROGRESS',
+      cancellable: false,
+      fulfillments: [
+        { sellerId: 'seller-a', status: 'DELIVERED', statusHistory: [] },
+        { sellerId: 'seller-b', status: 'PENDING', statusHistory: [] },
+      ],
+    });
+    expect(page.productStatus(order, 'seller-a')).toBe('DELIVERED');
+    expect(page.productStatus(order, 'seller-b')).toBe('PENDING');
+    expect(page.canCancel(order)).toBe(false);
+    expect(page.canCancel({ ...order, cancellable: true })).toBe(true);
+    expect(page.productStatus(sampleOrder({ status: 'SHIPPED' }), 'legacy-seller')).toBe('SHIPPED');
+  });
+
 });

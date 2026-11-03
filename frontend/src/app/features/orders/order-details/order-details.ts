@@ -71,7 +71,7 @@ export class OrderDetails implements OnInit, OnDestroy {
   }
 
   canCancel(order: Order): boolean {
-    return !this.seller && CANCELLABLE.includes(order.status);
+    return !this.seller && (order.cancellable ?? CANCELLABLE.includes(order.status));
   }
 
   cancel(): void {
@@ -154,6 +154,10 @@ export class OrderDetails implements OnInit, OnDestroy {
       },
       error: e => this.fail(e, 'The status could not be updated. Please retry.'),
     });
+  }
+
+  productStatus(order: Order, sellerId: string): OrderStatus {
+    return order.fulfillments?.find(part => part.sellerId === sellerId)?.status ?? order.status;
   }
 
   /** Newest change first. */

@@ -38,7 +38,7 @@ class DtoTest {
     void orderResponse_copiesListsDefensively() {
         List<StatusChangeResponse> history = new ArrayList<>();
         var response = new OrderResponse("o1", "c1", null, new ArrayList<>(), null, null, 0, null, history,
-                null, null);
+                null, null, List.of(), false);
         history.add(new StatusChangeResponse(null, null, null, null));
 
         assertThat(response.statusHistory()).isEmpty();
@@ -48,7 +48,7 @@ class DtoTest {
 
     @Test
     void orderResponse_keepsNullLists() {
-        var response = new OrderResponse("o1", "c1", null, null, null, null, 0, null, null, null, null);
+        var response = new OrderResponse("o1", "c1", null, null, null, null, 0, null, null, null, null, List.of(), false);
 
         assertThat(response.items()).isNull();
         assertThat(response.statusHistory()).isNull();

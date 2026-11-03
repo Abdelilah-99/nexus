@@ -162,6 +162,80 @@ class OrderFlowIntegrationTest {
                 .andExpect(jsonPath("$.totalPages").value(2));
     }
 
+    @Test
+    void sellerDeliveryIsIndependentAndAnalyticsOnlyCountDeliveredLines() throws Exception {
+        String id = placeMixed("mixed-progress");
+        for (String next : List.of("CONFIRMED", "SHIPPED", "DELIVERED")) {
+            progress(id, "seller-a", next);
+        }
+        mvc.perform(as(get("/orders/" + id), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+                .andExpect(jsonPath("$.cancellable").value(false))
+                .andExpect(jsonPath("$.fulfillments[0].status").value("DELIVERED"))
+                .andExpect(jsonPath("$.fulfillments[1].status").value("PENDING"));
+        mvc.perform(as(get("/orders/" + id), "seller-b", "SELLER"))
+                .andExpect(jsonPath("$.status").value("PENDING"))
+                .andExpect(jsonPath("$.fulfillments.length()").value(1))
+                .andExpect(jsonPath("$.statusHistory.length()").value(1));
+        mvc.perform(as(get("/orders/seller").param("status", "PENDING"), "seller-b", "SELLER"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(as(get("/orders/seller").param("status", "DELIVERED"), "seller-b", "SELLER"))
+                .andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(as(get("/orders/seller").param("q", "Headphones"), "seller-b", "SELLER"))
+                .andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(as(get("/orders/analytics/me"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalAmount").value(19.99))
+                .andExpect(jsonPath("$.totalUnits").value(1));
+        mvc.perform(as(get("/orders/analytics/seller"), "seller-b", "SELLER"))
+                .andExpect(jsonPath("$.totalAmount").value(0));
+        mvc.perform(as(patch("/orders/" + id + "/cancel"), CUSTOMER, "CLIENT"))
+                .andExpect(status().isConflict());
+        for (String next : List.of("CONFIRMED", "SHIPPED", "DELIVERED")) {
+            progress(id, "seller-b", next);
+        }
+        mvc.perform(as(get("/orders/" + id), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.status").value("DELIVERED"));
+        mvc.perform(as(get("/orders/analytics/me"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalAmount").value(28.99))
+                .andExpect(jsonPath("$.orderCount").value(1));
+    }
+
+    @Test
+    void sellerAndCustomerCancellationNeverReturnTheSameStockTwice() throws Exception {
+        String id = placeMixed("mixed-cancel");
+        progress(id, "seller-a", "CANCELLED");
+        mvc.perform(as(get("/orders/" + id), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.cancellable").value(true));
+        mvc.perform(as(patch("/orders/" + id + "/cancel"), CUSTOMER, "CLIENT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("CANCELLED"));
+        @SuppressWarnings("unchecked")
+        org.mockito.ArgumentCaptor<List<com.buy01.order_service.models.OrderItem>> released =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(products, times(2)).releaseStock(released.capture());
+        assertThat(released.getAllValues().get(0)).extracting(com.buy01.order_service.models.OrderItem::productId)
+                .containsExactly("headphones");
+        assertThat(released.getAllValues().get(1)).extracting(com.buy01.order_service.models.OrderItem::productId)
+                .containsExactly("cable");
+        mvc.perform(as(patch("/orders/" + id + "/cancel"), CUSTOMER, "CLIENT"))
+                .andExpect(status().isConflict());
+    }
+
+    private String placeMixed(String key) throws Exception {
+        String response = mvc.perform(as(post("/orders"), CUSTOMER, "CLIENT")
+                .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)
+                .content(body("""
+                        {"productId":"headphones","quantity":1},{"productId":"cable","quantity":2}
+                        """)))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+        return JsonPath.read(response, "$.id");
+    }
+
+    private void progress(String id, String seller, String next) throws Exception {
+        mvc.perform(as(patch("/orders/" + id + "/status"), seller, "SELLER")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"" + next + "\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value(next));
+    }
+
     private String place(String key, String productId, int quantity) throws Exception {
         String response = mvc.perform(as(post("/orders"), CUSTOMER, "CLIENT")
                         .header("Idempotency-Key", key)
