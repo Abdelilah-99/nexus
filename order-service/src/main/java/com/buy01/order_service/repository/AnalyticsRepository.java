@@ -25,6 +25,9 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class AnalyticsRepository {
+    private static final String MATCH = "$match";
+    private static final String IF_NULL = "$ifNull";
+
     private static final String ORDER_COUNT = "orderCount";
     private static final String UNITS = "units";
     private static final String AMOUNT = "amount";
@@ -39,20 +42,20 @@ public class AnalyticsRepository {
         Document match = new Document(seller ? "sellerIds" : "customerId", userId)
                 .append("createdAt", new Document("$gte", from.atStartOfDay(ZoneOffset.UTC).toInstant())
                         .append("$lt", to.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()));
-        stages.add(stage("$match", match));
+        stages.add(stage(MATCH, match));
         stages.add(stage("$unwind", "$items"));
         // Matching the parent order is insufficient: mixed-seller orders contain other sellers' lines.
         if (seller) {
-            stages.add(stage("$match", new Document("items.sellerId", userId)));
+            stages.add(stage(MATCH, new Document("items.sellerId", userId)));
         }
         // Count a line only when its own seller delivered it. Old orders retain their
         // historical overall status until they acquire explicit fulfillment records.
         Document ownParts = new Document("$filter", new Document("input",
-                new Document("$ifNull", List.of("$fulfillments", List.of())))
+                new Document(IF_NULL, List.of("$fulfillments", List.of())))
                 .append("as", "part").append("cond", new Document("$eq", List.of("$$part.sellerId", "$items.sellerId"))));
         stages.add(stage("$set", new Document("deliveredPart", new Document("$arrayElemAt", List.of(ownParts, 0)))));
-        Document lineStatus = new Document("$ifNull", List.of("$deliveredPart.status", "$status"));
-        stages.add(stage("$match", new Document("$expr", new Document("$eq", List.of(lineStatus, "DELIVERED")))));
+        Document lineStatus = new Document(IF_NULL, List.of("$deliveredPart.status", "$status"));
+        stages.add(stage(MATCH, new Document("$expr", new Document("$eq", List.of(lineStatus, "DELIVERED")))));
         stages.add(stage("$facet", new Document("totals", totals())
                 .append("products", products()).append("categories", categories()).append("months", months())));
         Document result = mongo.aggregate(Aggregation.newAggregation(stages), "orders", Document.class)
@@ -85,7 +88,7 @@ public class AnalyticsRepository {
 
     private static List<Document> categories() {
         Document trimmed = new Document("$trim", new Document("input",
-                new Document("$ifNull", List.of("$items.category", ""))));
+                new Document(IF_NULL, List.of("$items.category", ""))));
         Document category = new Document("$cond", List.of(new Document("$eq", List.of(trimmed, "")),
                 "uncategorized", trimmed));
         return List.of(group(category, ITEM_QUANTITY, ITEM_TOTAL, new Document()), ranking(), new Document("$limit", 5));

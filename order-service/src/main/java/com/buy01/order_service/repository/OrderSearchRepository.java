@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class OrderSearchRepository {
+    private static final String FULFILLMENTS = "fulfillments";
+    private static final String STATUS = "status";
 
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
 
@@ -37,11 +39,11 @@ public class OrderSearchRepository {
         constraints.add(owner);
         if (filter.status() != null) {
             constraints.add(new Criteria().orOperator(
-                    Criteria.where("fulfillments").elemMatch(Criteria.where("sellerId").is(sellerId)
-                            .and("status").is(filter.status())),
+                    Criteria.where(FULFILLMENTS).elemMatch(Criteria.where("sellerId").is(sellerId)
+                            .and(STATUS).is(filter.status())),
                     new Criteria().andOperator(new Criteria().orOperator(
-                            Criteria.where("fulfillments").exists(false), Criteria.where("fulfillments").is(null),
-                            Criteria.where("fulfillments").size(0)), Criteria.where("status").is(filter.status()))));
+                            Criteria.where(FULFILLMENTS).exists(false), Criteria.where(FULFILLMENTS).is(null),
+                            Criteria.where(FULFILLMENTS).size(0)), Criteria.where(STATUS).is(filter.status()))));
         }
         if (filter.q() != null && !filter.q().isBlank()) {
             String text = filter.q().trim();
@@ -65,7 +67,7 @@ public class OrderSearchRepository {
         criteria.add(owner);
 
         if (filter.status() != null) {
-            criteria.add(Criteria.where("status").is(filter.status()));
+            criteria.add(Criteria.where(STATUS).is(filter.status()));
         }
         if (filter.from() != null || filter.to() != null) {
             Criteria createdAt = Criteria.where("createdAt");

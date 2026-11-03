@@ -95,3 +95,11 @@ Next: review this branch, reproduce the two-seller scenario with a new order,
 then open a PR and require green remote CI before merging. The owners above can
 start archive and stock recovery in separate branches after coordinating the
 shared order contract. No old order statuses or application data were rewritten.
+
+
+## SonarQube feedback on first branch run
+
+Run 41663871876 passed backend, frontend and browser tests, but rejected four
+java:S1192 repeated-literal findings in AnalyticsRepository and OrderSearchRepository.
+Shared Mongo operators/field names now use constants. No rules, exclusions or
+quality-gate thresholds were changed; the follow-up remote run verifies the result.
