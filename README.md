@@ -12,7 +12,7 @@ The target experience is browsing → cart → checkout → order tracking, with
 | Product discovery | Keywords, category, price and stock filters, sorting, pagination; Angular catalog and MongoDB indexes | Verify behavior and query performance with representative data |
 | Cart | Persistent client cart, add/update/remove/clear, availability checks and totals | Verify full integration and critical end-to-end scenarios |
 | Pay on Delivery | Address → review → confirmation; review tokens, idempotency keys and checkout recovery | Verify retry and failure handling in deployment |
-| Orders | Customer/seller pages, paginated search, details/timeline, cancellation, reorder-to-cart and status updates; category snapshots and stock reservation | Further failure-recovery validation; review per-account archive behavior |
+| Orders | Customer/seller pages, paginated search, details/timeline, cancellation, reorder-to-cart and status updates; category snapshots and stock reservation | Review archive behavior and final order integration |
 | Customer analytics | Delivered-order spending, order count, units, top products/categories and monthly charts in the profile | Verify live integration and team acceptance of financial rules |
 | Seller analytics | Delivered-order revenue, units sold, best sellers, categories and monthly sales/order trends in profile and seller dashboard | Verify live integration and team acceptance of financial rules |
 | Testing and delivery | Backend/Angular tests, Jenkins pipeline, SonarQube and GitHub quality workflow | Verify the new browser job on CI and the staging deployment |
