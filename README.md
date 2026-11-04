@@ -379,7 +379,7 @@ For a full failure, inspect the **first real error** in Jenkins Console Output, 
 
 ## Quality checks and reviews
 
-See [.ci/README.md](.ci/README.md) for automatic scans, retained reports, required reviews, and the prepared GitHub branch-protection rule. Protected branches still require a qualifying GitHub plan for this private repository.
+See [.ci/README.md](.ci/README.md) for automatic scans, retained reports and the active `main` ruleset. Merging requires an approved review, an up-to-date branch and the green `Tests and SonarQube gates` check from GitHub Actions.
 
 ## Running checks locally
 

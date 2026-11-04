@@ -202,3 +202,25 @@ container IDs and missing prerequisites. All 22 provisioning/configuration tests
 passed. Compose configuration and workflow YAML/command/report wiring checks
 passed, as did Bash syntax and git diff whitespace checks. These are local checks;
 no new hosted run or live reproduction of the historical failure is claimed.
+
+
+## Effective main CI requirement — 2026-11-04
+
+Applied and read back repository ruleset 25739405. Its required_status_checks
+list now contains Tests and SonarQube gates, bound to GitHub Actions integration
+15368, with strict_required_status_checks_policy=true. The effective branch-rules
+API also reports that check for main. The existing approval requirement, last-push
+approval rule, stale-review dismissal, force-push/deletion restrictions, code-quality
+rule and empty bypass list were preserved. The current main check was already green.
+
+Saved the applied payload in .ci/main-ruleset.json and replaced obsolete setup
+instructions with the active ruleset and its effective-rule verification command.
+Validation is live API readback plus JSON/diff checks; no application tests were
+rerun for this settings/documentation change. No deliberately failing PR or merge
+was created as a test.
+
+Read-only Jenkins inspection: controller Created; nested daemon stopped; host
+Docker security options include rootless. Previous daemon logs show permission
+denied mounting /sys/kernel/security and containerd startup timeout. Existing
+local frontend is healthy on 4200; Jenkins Lab's daemon maps the same host port.
+No containers, volumes or credentials were changed by this inspection.
