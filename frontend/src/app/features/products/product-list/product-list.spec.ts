@@ -60,4 +60,40 @@ describe('ProductList template', () => {
     expect(fixture.nativeElement.textContent).toContain('No matching pieces found');
     expect(fixture.nativeElement.querySelector('nav[aria-label="Product pages"]')).toBeNull();
   });
+
+  it('sends slider prices to search and synchronizes the exact price fields', () => {
+    service.searchProducts.mockClear();
+    for (const [id, value] of [['minPriceSlider', '10.25'], ['maxPriceSlider', '50.75']]) {
+      const slider: HTMLInputElement = fixture.nativeElement.querySelector('#' + id);
+      slider.value = value;
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    vi.advanceTimersByTime(300);
+    fixture.detectChanges();
+    expect(service.searchProducts).toHaveBeenCalledOnce();
+    expect(service.searchProducts).toHaveBeenCalledWith(expect.objectContaining({
+      minPrice: 10.25, maxPrice: 50.75, page: 0,
+    }));
+    expect(fixture.nativeElement.querySelector('#minPriceFilter').value).toBe('10.25');
+    expect(fixture.nativeElement.querySelector('#maxPriceFilter').value).toBe('50.75');
+  });
+
+  it('extends sliders for larger typed prices and resets without an implicit price cap', () => {
+    component.filters.patchValue({ minPrice: 1200, maxPrice: 2500 });
+    fixture.detectChanges();
+    const min: HTMLInputElement = fixture.nativeElement.querySelector('#minPriceSlider');
+    const max: HTMLInputElement = fixture.nativeElement.querySelector('#maxPriceSlider');
+    expect(min.max).toBe('2500');
+    expect(min.value).toBe('1200');
+    expect(max.value).toBe('2500');
+    component.clearSearch();
+    vi.advanceTimersByTime(0);
+    fixture.detectChanges();
+    expect(min.value).toBe('0');
+    expect(max.value).toBe('1000');
+    expect(max.getAttribute('aria-valuetext')).toBe('No maximum price');
+    expect(service.searchProducts).toHaveBeenLastCalledWith(expect.objectContaining({
+      minPrice: null, maxPrice: null,
+    }));
+  });
 });

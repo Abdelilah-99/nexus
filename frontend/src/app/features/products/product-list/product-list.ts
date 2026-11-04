@@ -92,6 +92,16 @@ export class ProductList implements OnInit, OnDestroy {
     this.loadProducts();
   }
 
+  get priceSliderMax(): number {
+    const { minPrice, maxPrice } = this.filters.getRawValue();
+    return Math.max(1000, ...[minPrice, maxPrice].map(price =>
+      price != null && Number.isFinite(price) ? price : 0));
+  }
+
+  setSliderPrice(field: 'minPrice' | 'maxPrice', event: Event): void {
+    this.filters.controls[field].setValue((event.target as HTMLInputElement).valueAsNumber);
+  }
+
   private queueSearch(delay: number): void {
     this.products.set([]);
     this.totalElements.set(0);
