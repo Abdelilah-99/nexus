@@ -65,6 +65,8 @@ export interface Order {
   updatedAt: string;
   fulfillments?: SellerFulfillment[];
   cancellable?: boolean;
+  archived?: boolean;
+  archivable?: boolean;
 }
 
 export interface OrderPage {
@@ -78,6 +80,7 @@ export interface OrderPage {
 /** Query of GET /orders/my and /orders/seller; dates are yyyy-MM-dd. */
 export interface OrderFilters {
   status?: OrderStatus | '';
+  archived?: 'true' | '';
   from?: string;
   to?: string;
   q?: string;

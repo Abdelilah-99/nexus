@@ -24,8 +24,17 @@ public record OrderFilter(
         LocalDate to,
 
         @Size(max = 100, message = "search text must be at most 100 characters")
-        String q
+        String q,
+        Boolean archived
 ) {
+
+    public OrderFilter {
+        archived = Boolean.TRUE.equals(archived);
+    }
+
+    public OrderFilter(OrderStatus status, LocalDate from, LocalDate to, String q) {
+        this(status, from, to, q, false);
+    }
 
     public static OrderFilter none() {
         return new OrderFilter(null, null, null, null);

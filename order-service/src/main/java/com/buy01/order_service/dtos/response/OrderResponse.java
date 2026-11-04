@@ -22,12 +22,16 @@ public record OrderResponse(
         Instant createdAt,
         Instant updatedAt,
         List<SellerFulfillment> fulfillments,
-        Boolean cancellable) {
+        Boolean cancellable,
+        Boolean archived,
+        Boolean archivable) {
 
     public OrderResponse {
         items = items == null ? null : List.copyOf(items);
         statusHistory = statusHistory == null ? null : List.copyOf(statusHistory);
         fulfillments = fulfillments == null ? List.of() : List.copyOf(fulfillments);
         cancellable = Boolean.TRUE.equals(cancellable);
+        archived = Boolean.TRUE.equals(archived);
+        archivable = Boolean.TRUE.equals(archivable);
     }
 }

@@ -37,4 +37,7 @@ public interface OrderService {
     ReorderResponse reorder(String orderId, AuthenticatedUser user);
 
     OrderResponse updateStatus(String orderId, UpdateOrderStatusRequest request, AuthenticatedUser user);
+
+    /** Hide a finished order from this account's default list, or restore it. */
+    OrderResponse archive(String orderId, boolean archived, AuthenticatedUser user);
 }

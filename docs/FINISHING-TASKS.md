@@ -121,3 +121,27 @@ The next feature to implement is per-user archive/hide for terminal orders,
 keeping purchase snapshots and analytics and enforcing ownership. Coordinate with
 Abdelillah before editing the shared order service. Stock recovery, the API error
 contract, required CI checks and Jenkins staging validation remain open above.
+
+
+## Order archive implementation — feat/order-archive
+
+Finished orders can now be hidden/restored per account through PATCH
+/orders/{id}/archive with an explicit archived boolean. Customers need a terminal
+overall order; sellers need only their own terminal fulfillment. Default lists
+exclude personally archived orders; archived=true lists them with existing filters
+and pagination. Order details/reorder remain available under ownership checks.
+Snapshots, fulfillment history, stock, timestamps and analytics are preserved.
+Optimistic version checks prevent lost concurrent visibility/status changes.
+
+Local validation: 223 order tests passed against disposable MongoDB (zero skipped),
+214 Angular tests and coverage thresholds passed, and the production build passed.
+Archive regressions cover invalid/missing input, authentication/ownership, active
+order rejection, repeated requests, restoring personal visibility, independent
+seller progress, analytics and unchanged stock. All six browser scenarios passed, including
+archive and restore through the real customer/seller UI and unchanged analytics.
+Remote CI and SonarQube must also pass before merging.
+
+After review/merge, the next remaining code task is reliable stock recovery,
+followed by consistent API errors. Required merge checks and the Jenkins staging
+pipeline remain shared delivery tasks. Old incorrectly delivered orders still
+require the separately documented manual audit.

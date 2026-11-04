@@ -60,4 +60,20 @@ describe('OrderService API', () => {
     service.updateStatus('o1', 'DELIVERED', '   ').subscribe();
     expect(http.expectOne('/api/orders/o1/status').request.body).toEqual({ status: 'DELIVERED' });
   });
+  it('sends explicit personal archive and restore requests', () => {
+    service.archive('o/1', true).subscribe();
+    const archive = http.expectOne('/api/orders/o%2F1/archive');
+    expect(archive.request.method).toBe('PATCH');
+    expect(archive.request.body).toEqual({ archived: true });
+    archive.flush({});
+    service.archive('o/1', false).subscribe();
+    const restore = http.expectOne('/api/orders/o%2F1/archive');
+    expect(restore.request.body).toEqual({ archived: false });
+    restore.flush({});
+    service.list('my', { archived: 'true' }).subscribe();
+    const list = http.expectOne(req => req.url === '/api/orders/my');
+    expect(list.request.params.get('archived')).toBe('true');
+    list.flush({ content: [] });
+  });
+
 });

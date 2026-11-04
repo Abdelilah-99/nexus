@@ -46,10 +46,12 @@ public class OrderMapper {
     }
 
     private OrderResponse toResponse(Order order, List<OrderItem> items, List<SellerFulfillment> parts, boolean seller) {
+        var status = seller ? parts.get(0).status() : order.getStatus();
+        String viewerId = seller ? parts.get(0).sellerId() : order.getCustomerId();
         return new OrderResponse(
                 order.getId(),
                 order.getCustomerId(),
-                seller ? parts.get(0).status() : order.getStatus(),
+                status,
                 items.stream().map(this::toItemResponse).toList(),
                 toDto(order.getShippingAddress()),
                 order.getPaymentMethod(),
@@ -62,7 +64,9 @@ public class OrderMapper {
                 order.getCreatedAt(),
                 order.getUpdatedAt(),
                 parts,
-                !seller && OrderProgress.cancellable(parts));
+                !seller && OrderProgress.cancellable(parts),
+                order.isArchivedBy(viewerId),
+                status.isTerminal());
     }
 
     private OrderItemResponse toItemResponse(OrderItem item) {

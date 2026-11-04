@@ -47,6 +47,11 @@ public class OrderAvailabilityConfig {
         }
 
         @Override
+        public OrderResponse archive(String id, boolean archived, AuthenticatedUser user) {
+            throw unavailable();
+        }
+
+        @Override
         public OrderResponse cancelOrder(String id, AuthenticatedUser user) {
             throw unavailable();
         }

@@ -342,3 +342,13 @@ The UI was delivered as a stack of small pull requests, each one building on the
 | Order again adds items one request at a time | the cart API adds one product per call | a bulk "add items" endpoint |
 | No live updates | the page shows the order as loaded | refresh after a while, or server-sent events |
 | Amounts shown in USD | the existing cart and checkout use the `USD` currency pipe | one shared currency setting |
+
+
+## Archive and restore
+
+Order details expose Archive order with confirmation when the API marks the
+caller's scope archivable. Archived details expose Restore order. Both clients
+and sellers use PATCH /orders/{id}/archive with an explicit archived boolean.
+The list's View selector switches between Current orders and Archived orders,
+combined with existing filters and pagination; Reset returns to current orders.
+The server enforces eligibility and ownership and keeps snapshots and analytics.

@@ -37,7 +37,7 @@ class CartServiceTest {
     ProductClient.Product product(String price, int stock) { return new ProductClient.Product("p1", "Product", new BigDecimal(price), stock, List.of()); }
     CheckoutRequest request() { return new CheckoutRequest(address, service.review(user).reviewToken()); }
     OrderResponse order() { return new OrderResponse("order-1", "client", OrderStatus.PENDING, List.of(), address,
-        PaymentMethod.CASH_ON_DELIVERY, 2, new BigDecimal("20.50"), List.of(), null, null, List.of(), false); }
+        PaymentMethod.CASH_ON_DELIVERY, 2, new BigDecimal("20.50"), List.of(), null, null, List.of(), false, false, false); }
 
     @Test void computesServerPricesAndUsesOnlyAuthenticatedCart() {
         var result = service.get(user);

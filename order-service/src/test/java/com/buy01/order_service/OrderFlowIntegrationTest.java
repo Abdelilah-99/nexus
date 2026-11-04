@@ -220,6 +220,85 @@ class OrderFlowIntegrationTest {
                 .andExpect(status().isConflict());
     }
 
+    @Test
+    void archiveIsPersonalReversibleAndPreservesDeliveredSnapshotsAndAnalytics() throws Exception {
+        String id = place("archive-delivered", "headphones", 2);
+        for (String next : List.of("CONFIRMED", "SHIPPED", "DELIVERED")) {
+            progress(id, "seller-a", next);
+        }
+        Order original = orders.findById(id).orElseThrow();
+        archive(id, CUSTOMER, "CLIENT", true);
+        Order archived = orders.findById(id).orElseThrow();
+        archive(id, CUSTOMER, "CLIENT", true);
+        assertThat(orders.findById(id).orElseThrow().getVersion()).isEqualTo(archived.getVersion());
+        assertThat(archived.getItems()).isEqualTo(original.getItems());
+        assertThat(archived.getStatusHistory()).isEqualTo(original.getStatusHistory());
+        assertThat(archived.getUpdatedAt()).isEqualTo(original.getUpdatedAt());
+        mvc.perform(as(get("/orders/my"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(as(get("/orders/my").param("archived", "true"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].archived").value(true));
+        mvc.perform(as(get("/orders/seller"), "seller-a", "SELLER"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].archived").value(false));
+        mvc.perform(as(get("/orders/" + id), CUSTOMER, "CLIENT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.archived").value(true));
+        mvc.perform(as(get("/orders/analytics/me"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalAmount").value(39.98));
+        mvc.perform(as(get("/orders/analytics/seller"), "seller-a", "SELLER"))
+                .andExpect(jsonPath("$.totalAmount").value(39.98));
+        mvc.perform(as(post("/orders/" + id + "/reorder"), CUSTOMER, "CLIENT"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.items[0].quantity").value(2));
+        archive(id, CUSTOMER, "CLIENT", false);
+        mvc.perform(as(get("/orders/my"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(as(get("/orders/my").param("archived", "true"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalElements").value(0));
+        org.mockito.Mockito.verify(products, org.mockito.Mockito.never()).releaseStock(anyList());
+    }
+
+    @Test
+    void onlyRelatedAccountsCanArchiveAndOnlyAfterTheirScopeFinishes() throws Exception {
+        String id = placeMixed("archive-mixed");
+        mvc.perform(as(patch("/orders/" + id + "/archive"), CUSTOMER, "CLIENT")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"archived\":true}"))
+                .andExpect(status().isConflict());
+        mvc.perform(as(patch("/orders/" + id + "/archive"), "stranger", "SELLER")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"archived\":true}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(as(patch("/orders/" + id + "/archive"), "other-client", "CLIENT")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"archived\":false}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(patch("/orders/" + id + "/archive").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"archived\":true}")).andExpect(status().isUnauthorized());
+        mvc.perform(as(patch("/orders/" + id + "/archive"), CUSTOMER, "CLIENT")
+                .contentType(MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest());
+        for (String next : List.of("CONFIRMED", "SHIPPED", "DELIVERED")) {
+            progress(id, "seller-a", next);
+        }
+        archive(id, "seller-a", "SELLER", true);
+        mvc.perform(as(get("/orders/seller").param("archived", "true").param("status", "DELIVERED")
+                        .param("q", "Headphones"), "seller-a", "SELLER"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(as(get("/orders/seller"), "seller-a", "SELLER"))
+                .andExpect(jsonPath("$.totalElements").value(0));
+        mvc.perform(as(get("/orders/seller"), "seller-b", "SELLER"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(as(get("/orders/my"), CUSTOMER, "CLIENT"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.content[0].archivable").value(false));
+        progress(id, "seller-b", "CONFIRMED");
+        assertThat(orders.findById(id).orElseThrow().getArchivedBy()).containsExactly("seller-a");
+    }
+
+    private void archive(String id, String user, String role, boolean archived) throws Exception {
+        mvc.perform(as(patch("/orders/" + id + "/archive"), user, role)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"archived\":" + archived + "}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.archived").value(archived));
+    }
+
     private String placeMixed(String key) throws Exception {
         String response = mvc.perform(as(post("/orders"), CUSTOMER, "CLIENT")
                 .header("Idempotency-Key", key).contentType(MediaType.APPLICATION_JSON)

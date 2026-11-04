@@ -32,6 +32,7 @@ describe('OrderDetails', () => {
     cancel: ReturnType<typeof vi.fn>;
     reorder: ReturnType<typeof vi.fn>;
     updateStatus: ReturnType<typeof vi.fn>;
+    archive: ReturnType<typeof vi.fn>;
   };
   let cart: { add: ReturnType<typeof vi.fn> };
 
@@ -47,6 +48,7 @@ describe('OrderDetails', () => {
     api = {
       get: vi.fn(() => of(sampleOrder())),
       cancel: vi.fn(() => of(sampleOrder({ status: 'CANCELLED' }))),
+      archive: vi.fn(() => of(sampleOrder({ archived: true, archivable: true }))),
       updateStatus: vi.fn(() => of(sampleOrder({ status: 'SHIPPED' }))),
       reorder: vi.fn(() =>
         of({ sourceOrderId: 'order-000123', items: [{ productId: 'p1', quantity: 2 }, { productId: 'p2', quantity: 1 }] }),
@@ -229,6 +231,37 @@ describe('OrderDetails', () => {
     expect(page.canCancel(order)).toBe(false);
     expect(page.canCancel({ ...order, cancellable: true })).toBe(true);
     expect(page.productStatus(sampleOrder({ status: 'SHIPPED' }), 'legacy-seller')).toBe('SHIPPED');
+  });
+
+  it('archives and restores an order using the server response', () => {
+    const page = create();
+    page.confirmingArchive.set(true);
+    page.changeArchive(true);
+    expect(api.archive).toHaveBeenCalledWith('order-000123', true);
+    expect(page.order()?.archived).toBe(true);
+    expect(page.confirmingArchive()).toBe(false);
+    expect(page.toast()).toContain('Order archived');
+    api.archive.mockReturnValue(of(sampleOrder({ archived: false, archivable: true })));
+    page.changeArchive(false);
+    expect(api.archive).toHaveBeenLastCalledWith('order-000123', false);
+    expect(page.order()?.archived).toBe(false);
+    expect(page.toast()).toContain('restored');
+    page.ngOnDestroy();
+  });
+
+  it('retains the displayed order when archiving fails and prevents duplicate clicks', () => {
+    const page = create('SELLER');
+    const order = sampleOrder();
+    page.order.set(order);
+    api.archive.mockReturnValue(throwError(() => ({ error: { message: 'Only finished orders can be archived' } })));
+    page.changeArchive(true);
+    expect(page.error()).toContain('Only finished orders');
+    expect(page.order()).toEqual(order);
+    expect(page.busy()).toBe(false);
+    page.busy.set(true);
+    api.archive.mockClear();
+    page.changeArchive(false);
+    expect(api.archive).not.toHaveBeenCalled();
   });
 
 });

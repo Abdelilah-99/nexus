@@ -24,4 +24,8 @@ public enum OrderStatus {
     public boolean canTransitionTo(OrderStatus next) {
         return next != null && allowedNext().contains(next);
     }
+
+    public boolean isTerminal() {
+        return this == DELIVERED || this == CANCELLED || this == COMPLETED;
+    }
 }

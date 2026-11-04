@@ -29,6 +29,7 @@ export class OrderDetails implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly toast = signal('');
   readonly confirmingCancel = signal(false);
+  readonly confirmingArchive = signal(false);
   readonly reordered = signal(false);
   nextStatus: OrderStatus | '' = '';
   note = '';
@@ -86,6 +87,21 @@ export class OrderDetails implements OnInit, OnDestroy {
         this.notify('Order cancelled. Nothing will be delivered or charged.');
       },
       error: e => this.fail(e, 'The order could not be cancelled. Please retry.'),
+    });
+  }
+
+  changeArchive(archived: boolean): void {
+    if (this.busy()) return;
+    this.confirmingArchive.set(false);
+    this.busy.set(true);
+    this.error.set('');
+    this.orders.archive(this.id, archived).subscribe({
+      next: order => {
+        this.order.set(order);
+        this.busy.set(false);
+        this.notify(archived ? 'Order archived. Find it under Archived orders.' : 'Order restored to your current orders.');
+      },
+      error: e => this.fail(e, 'Order visibility could not be changed. Please retry.'),
     });
   }
 

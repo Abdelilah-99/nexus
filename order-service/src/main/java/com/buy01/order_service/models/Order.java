@@ -46,6 +46,9 @@ public class Order {
 
     private List<SellerFulfillment> fulfillments;
 
+    /** Personal list visibility; never removes snapshots or changes delivery state. */
+    private List<String> archivedBy;
+
     private ShippingAddress shippingAddress;
 
     private PaymentMethod paymentMethod;
@@ -63,6 +66,10 @@ public class Order {
 
     public boolean isPlacedBy(String userId) {
         return customerId != null && customerId.equals(userId);
+    }
+
+    public boolean isArchivedBy(String userId) {
+        return archivedBy != null && archivedBy.contains(userId);
     }
 
     public boolean containsProductsOf(String sellerId) {

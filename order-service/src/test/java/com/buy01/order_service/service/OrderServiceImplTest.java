@@ -685,6 +685,61 @@ class OrderServiceImplTest {
         }
     }
 
+    @Nested
+    class Archive {
+        @ParameterizedTest
+        @EnumSource(value = OrderStatus.class, names = {"DELIVERED", "CANCELLED", "COMPLETED"})
+        void customerCanArchiveAndRestoreFinishedOrdersWithoutChangingHistoryOrStock(OrderStatus status) {
+            Order order = order(status);
+            stored(order);
+            var history = List.copyOf(order.getStatusHistory());
+            var updatedAt = order.getUpdatedAt();
+            var response = service.archive("order-1", true, CUSTOMER);
+            assertThat(response.archived()).isTrue();
+            assertThat(response.archivable()).isTrue();
+            assertThat(service.archive("order-1", false, CUSTOMER).archived()).isFalse();
+            assertThat(order.getStatusHistory()).isEqualTo(history);
+            assertThat(order.getStatus()).isEqualTo(status);
+            assertThat(order.getUpdatedAt()).isEqualTo(updatedAt);
+            verifyNoInteractions(productClient);
+        }
+
+        @ParameterizedTest
+        @EnumSource(value = OrderStatus.class, names = {"PENDING", "CONFIRMED", "SHIPPED", "IN_PROGRESS"})
+        void unfinishedOrdersCannotBeArchived(OrderStatus status) {
+            stored(order(status));
+            assertThatThrownBy(() -> service.archive("order-1", true, CUSTOMER))
+                    .isInstanceOf(ConflictException.class).hasMessage("Only finished orders can be archived");
+            verify(orderRepository, never()).save(any(Order.class));
+        }
+
+        @Test
+        void unrelatedAccountsAreForbiddenAndRepeatedArchiveDoesNotSaveAgain() {
+            Order order = order(OrderStatus.DELIVERED);
+            stored(order);
+            assertThatThrownBy(() -> service.archive("order-1", true, OTHER_CUSTOMER))
+                    .isInstanceOf(ForbiddenException.class);
+            assertThatThrownBy(() -> service.archive("order-1", true, OTHER_SELLER))
+                    .isInstanceOf(ForbiddenException.class);
+            service.archive("order-1", true, SELLER_A);
+            service.archive("order-1", true, SELLER_A);
+            verify(orderRepository).save(order);
+            assertThat(service.getOrder("order-1", CUSTOMER).archived()).isFalse();
+            assertThat(service.getOrder("order-1", SELLER_B).archived()).isFalse();
+            assertThat(order.getArchivedBy()).containsExactly("seller-a");
+        }
+
+        @Test
+        void restoringOneAccountKeepsOtherAccountsArchived() {
+            Order order = order(OrderStatus.DELIVERED);
+            order.setArchivedBy(List.of("customer-1", "seller-a"));
+            stored(order);
+            service.archive("order-1", false, CUSTOMER);
+            assertThat(order.getArchivedBy()).containsExactly("seller-a");
+            assertThat(service.getOrder("order-1", SELLER_A).archived()).isTrue();
+        }
+    }
+
     // ---------- helpers ----------
 
     private void stored(Order order) {

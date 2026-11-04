@@ -16,6 +16,20 @@
       <span [class]="statusBadge(o.status)">{{ statusLabel(o.status) }}</span>
     </header>
 
+    <section *ngIf="o.archivable || o.archived" class="buy-card p-3 mb-4" aria-label="Order visibility">
+      <p class="small text-muted">Archiving hides this order only from your current list. Your purchase history and analytics are preserved.</p>
+      <p *ngIf="o.archived" class="mb-2">This order is archived for your account.</p>
+      <button *ngIf="o.archived" class="btn btn-outline-primary" (click)="changeArchive(false)" [disabled]="busy()">Restore order</button>
+      <ng-container *ngIf="!o.archived">
+        <button *ngIf="!confirmingArchive()" class="btn btn-outline-secondary" (click)="confirmingArchive.set(true)" [disabled]="busy()">Archive order</button>
+        <fieldset *ngIf="confirmingArchive()" class="d-flex flex-wrap align-items-center gap-2">
+          <legend class="float-none w-auto fs-6 mb-0">Hide this order from your current list?</legend>
+          <button class="btn btn-secondary" (click)="changeArchive(true)" [disabled]="busy()">Yes, archive it</button>
+          <button class="btn btn-outline-secondary" (click)="confirmingArchive.set(false)" [disabled]="busy()">Keep in list</button>
+        </fieldset>
+      </ng-container>
+    </section>
+
     <section *ngIf="!seller" class="buy-card p-3 mb-4 d-flex flex-wrap align-items-center gap-2" aria-label="Order actions">
       <ng-container *ngIf="canCancel(o)">
         <button *ngIf="!confirmingCancel()" class="btn btn-outline-danger" (click)="confirmingCancel.set(true)" [disabled]="busy()">
