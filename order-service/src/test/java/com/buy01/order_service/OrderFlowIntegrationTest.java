@@ -3,6 +3,7 @@ package com.buy01.order_service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -255,7 +256,7 @@ class OrderFlowIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(1));
         mvc.perform(as(get("/orders/my").param("archived", "true"), CUSTOMER, "CLIENT"))
                 .andExpect(jsonPath("$.totalElements").value(0));
-        org.mockito.Mockito.verify(products, org.mockito.Mockito.never()).releaseStock(anyList());
+        verify(products, never()).releaseStock(anyList());
     }
 
     @Test

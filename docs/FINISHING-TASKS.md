@@ -145,3 +145,10 @@ After review/merge, the next remaining code task is reliable stock recovery,
 followed by consistent API errors. Required merge checks and the Jenkins staging
 pipeline remain shared delivery tasks. Old incorrectly delivered orders still
 require the separately documented manual audit.
+
+
+Archive branch CI follow-up: run 41822412779 first stopped before browser tests
+because its media MongoDB container failed during initialization. The unchanged
+rerun passed all six browser scenarios and all functional tests. Sonar then
+reported two java:S8924 test static-import findings (verify/never); the follow-up
+uses the existing Mockito static-import style, with no changed assertions or gates.
