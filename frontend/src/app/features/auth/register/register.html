@@ -21,9 +21,12 @@
           id="regFullName"
           type="text" 
           class="form-control" 
-          formControlName="fullName" 
+          formControlName="fullName"
+          (input)="fieldErrors.set({})"
+          [attr.aria-describedby]="fieldErrors()['fullName'] ? 'fullName-server-error' : null"
           placeholder="Alex Johnson"
           autocomplete="name">
+        <div *ngIf="fieldErrors()['fullName']" id="fullName-server-error" class="text-danger small mt-1">{{ fieldErrors()['fullName'] }}</div>
         <div class="text-danger small mt-1" *ngIf="registerForm.get('fullName')?.touched && registerForm.get('fullName')?.invalid">
           Please enter your full name.
           <span *ngIf="registerForm.get('fullName')?.hasError('required')">Please enter your full name.</span>
@@ -40,9 +43,12 @@
           id="regEmail"
           type="email" 
           class="form-control" 
-          formControlName="email" 
+          formControlName="email"
+          (input)="fieldErrors.set({})"
+          [attr.aria-describedby]="fieldErrors()['email'] ? 'email-server-error' : null"
           placeholder="alex@example.com"
           autocomplete="email">
+        <div *ngIf="fieldErrors()['email']" id="email-server-error" class="text-danger small mt-1">{{ fieldErrors()['email'] }}</div>
         <div class="text-danger small mt-1" *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
           Please enter a valid email address.
         </div>
@@ -56,7 +62,9 @@
             id="regPassword"
             [type]="showPassword() ? 'text' : 'password'" 
             class="form-control border-end-0" 
-            formControlName="password" 
+            formControlName="password"
+          (input)="fieldErrors.set({})"
+          [attr.aria-describedby]="fieldErrors()['password'] ? 'password-server-error' : null"
             placeholder="At least 6 characters"
             autocomplete="new-password">
           <button 
@@ -67,6 +75,7 @@
             <span class="small">{{ showPassword() ? 'Hide' : 'Show' }}</span>
           </button>
         </div>
+        <div *ngIf="fieldErrors()['password']" id="password-server-error" class="text-danger small mt-1">{{ fieldErrors()['password'] }}</div>
         <div class="text-danger small mt-1" *ngIf="registerForm.get('password')?.touched && registerForm.get('password')?.invalid">
           Password must be at least 6 characters.
         </div>

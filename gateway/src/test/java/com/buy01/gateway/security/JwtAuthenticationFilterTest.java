@@ -125,6 +125,8 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(request, response, chain);
 
         assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("\"code\":\"UNAUTHORIZED\"", "\"details\":{}")
+                .doesNotContain("not.a.jwt");
         verifyNoInteractions(chain);
     }
 

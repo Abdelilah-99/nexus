@@ -66,7 +66,8 @@ class GlobalExceptionHandlerTest {
         var response = handler.handleGlobalException(new RuntimeException("boom"), request);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(response.getBody().message()).contains("boom");
+        assertThat(response.getBody().message()).isEqualTo("An unexpected error occurred");
+        assertThat(response.getBody().code()).isEqualTo("INTERNAL_SERVER_ERROR");
     }
 
     @Test

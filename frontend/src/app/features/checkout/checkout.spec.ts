@@ -33,4 +33,18 @@ describe('Checkout', () => {
     api.checkout.mockReturnValue(throwError(() => ({ status: 409, error: { message: 'prices changed' } })));
     page.review(form); page.confirm(); expect(page.step()).toBe('address'); expect(page.pending()).toBe(false);
   });
+  it('preserves server field details after a refused checkout and supports older fields', () => {
+    api.checkout.mockReturnValue(throwError(() => ({ status: 400, error: {
+      code: 'VALIDATION_FAILED', message: 'Invalid input', details: { 'shippingAddress.phone': 'Invalid phone' },
+    } })));
+    page.review(form); page.confirm();
+    expect(page.step()).toBe('address');
+    expect(page.addressError('phone')).toBe('Invalid phone');
+    expect(page.addressError('city')).toBe('');
+    page.fieldErrors.set({ city: 'Invalid city' });
+    expect(page.addressError('city')).toBe('Invalid city');
+    page.review(form);
+    expect(page.fieldErrors()).toEqual({});
+  });
+
 });

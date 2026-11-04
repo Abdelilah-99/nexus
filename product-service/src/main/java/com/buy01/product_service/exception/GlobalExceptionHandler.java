@@ -1,6 +1,8 @@
 package com.buy01.product_service.exception;
 
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,14 +16,20 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final String INVALID_VALUE = "Invalid value";
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationErrrors(MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
+        Map<String, String> details = new LinkedHashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error -> details.putIfAbsent(error.getField(),
+                error.isBindingFailure() || error.getDefaultMessage() == null ? INVALID_VALUE : error.getDefaultMessage()));
+        ex.getBindingResult().getGlobalErrors().forEach(error -> details.putIfAbsent(error.getObjectName(),
+                error.getDefaultMessage() == null ? INVALID_VALUE : error.getDefaultMessage()));
         ErrorResponse errResp = new ErrorResponse(LocalDateTime.now(java.time.ZoneOffset.UTC), HttpStatus.BAD_REQUEST.value(),
                 "Validation Failed",
                 "Invalid input data",
-                request.getRequestURI());
+                request.getRequestURI(), details);
         return new ResponseEntity<>(errResp, HttpStatus.BAD_REQUEST);
 
     }
@@ -97,14 +105,21 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request) {
 
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+        if (ex instanceof org.springframework.http.converter.HttpMessageNotReadableException
+                || ex instanceof org.springframework.web.method.annotation.MethodArgumentTypeMismatchException) {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        if (ex instanceof org.springframework.web.ErrorResponse springError) {
+            HttpStatus resolved = HttpStatus.resolve(springError.getStatusCode().value());
+            if (resolved != null) status = resolved;
+        }
         ErrorResponse errorResponse = new ErrorResponse(
-                LocalDateTime.now(java.time.ZoneOffset.UTC),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "incomplete request",
-                "An unexpected error occurred: " + ex.getMessage(),
+                LocalDateTime.now(java.time.ZoneOffset.UTC), status.value(), status.getReasonPhrase(),
+                status.is5xxServerError() ? "An unexpected error occurred" : status.getReasonPhrase(),
                 request.getRequestURI());
 
-        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+        return new ResponseEntity<>(errorResponse, status);
     }
 
 }

@@ -86,4 +86,19 @@ describe('Register', () => {
     expect(component.errorMessage()).toBe('Email already exists');
     expect(component.loading()).toBeFalsy();
   });
+  it('renders shared-contract field errors inline and clears them when editing', () => {
+    vi.spyOn(TestBed.inject(AuthService), 'register').mockReturnValue(throwError(() => ({ status: 400, error: {
+      code: 'VALIDATION_FAILED', message: 'Invalid input', details: { fullName: 'Server rejected this name' },
+      fields: { fullName: 'Old message' },
+    } })));
+    component.registerForm.patchValue({ fullName: 'Valid Name', email: 'valid@example.com', password: 'password123', role: 'CLIENT' });
+    component.onSubmit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#fullName-server-error').textContent).toContain('Server rejected this name');
+    expect(component.errorMessage()).toBe('Server rejected this name');
+    fixture.nativeElement.querySelector('#regFullName').dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#fullName-server-error')).toBeNull();
+  });
+
 });

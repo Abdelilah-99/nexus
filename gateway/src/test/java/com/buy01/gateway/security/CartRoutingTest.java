@@ -55,9 +55,11 @@ class CartRoutingTest {
     @Test void anonymousAndSellerCannotReadEitherCartPath() throws Exception {
         for (String path : new String[]{"/cart", "/api/cart", "/api/cart/items", "/cart/checkout", "/api/cart/checkout"}) {
             var anonymous = http.send(request(path).header("X-User-Id", "victim").header("X-User-Roles", "CLIENT").GET().build(), HttpResponse.BodyHandlers.ofString());
-            assertThat(anonymous.statusCode()).isIn(401, 403);
+            assertThat(anonymous.statusCode()).isEqualTo(401);
+            assertThat(anonymous.body()).contains("\"code\":\"UNAUTHORIZED\"", "\"details\":{}");
             var seller = http.send(request(path).header("Authorization", "Bearer " + jwt("SELLER")).GET().build(), HttpResponse.BodyHandlers.ofString());
             assertThat(seller.statusCode()).isEqualTo(403);
+            assertThat(seller.body()).contains("\"code\":\"FORBIDDEN\"");
         }
     }
     @Test void bothPathsRouteWithAuthenticatedIdentityOverwritingSpoofedHeaders() throws Exception {

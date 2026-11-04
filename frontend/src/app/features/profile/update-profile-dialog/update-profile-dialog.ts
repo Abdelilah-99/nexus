@@ -1,3 +1,4 @@
+import { apiFieldErrors } from '../../../core/api-error';
 import { Component, EventEmitter, HostListener, Input, OnInit, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -20,6 +21,7 @@ export class UpdateProfileDialog implements OnInit {
   readonly saving = signal(false);
   readonly uploadingAvatar = signal(false);
   readonly errorMessage = signal('');
+  readonly fieldErrors = signal<Record<string, string>>({});
   readonly avatarPreview = signal('');
   readonly avatarMediaId = signal('');
 
@@ -83,6 +85,7 @@ export class UpdateProfileDialog implements OnInit {
 
     this.saving.set(true);
     this.errorMessage.set('');
+    this.fieldErrors.set({});
     const request: { username: string; avatarUrl?: string } = {
       username: this.profileForm.controls['username'].value || '',
     };
@@ -97,8 +100,9 @@ export class UpdateProfileDialog implements OnInit {
       },
       error: (error) => {
         let msg = '';
-        if (error.error?.fields && typeof error.error.fields === 'object') {
-          const fieldErrors = Object.values(error.error.fields) as string[];
+        this.fieldErrors.set(apiFieldErrors(error.error));
+        if (Object.keys(this.fieldErrors()).length) {
+          const fieldErrors = Object.values(this.fieldErrors());
           msg = Array.from(new Set(fieldErrors)).join('. ');
         }
         if (!msg && error.error?.message) {

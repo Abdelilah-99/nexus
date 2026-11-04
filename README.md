@@ -555,3 +555,5 @@ The setup and pipeline above describe the **intended reproducible workflow**. Ve
 
 
 The remaining team tasks and acceptance checks are tracked in [docs/FINISHING-TASKS.md](docs/FINISHING-TASKS.md).
+
+Application errors follow the shared [API error contract](docs/API-ERRORS.md): `code`, `message`, and field-level `details`.

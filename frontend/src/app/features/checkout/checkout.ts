@@ -1,3 +1,4 @@
+import { apiFieldErrors } from '../../core/api-error';
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -10,6 +11,7 @@ import { CartData, CheckoutOrder, DeliveryAddress } from '../../core/models/cart
 export class Checkout implements OnInit {
   readonly busy = signal(false);
   readonly error = signal('');
+  readonly fieldErrors = signal<Record<string, string>>({});
   readonly step = signal<'address' | 'review' | 'done'>('address');
   readonly cart = signal<CartData | null>(null);
   readonly order = signal<CheckoutOrder | null>(null);
@@ -28,7 +30,7 @@ export class Checkout implements OnInit {
   constructor(private readonly carts: CartService) {}
   ngOnInit() { this.load(); }
   load() {
-    this.busy.set(true); this.error.set('');
+    this.busy.set(true); this.error.set(''); this.fieldErrors.set({});
     this.carts.get().subscribe({ next: cart => {
       this.cart.set(cart);
       if (cart.pending) {
@@ -42,7 +44,7 @@ export class Checkout implements OnInit {
     if (form.invalid || this.busy()) { form.control.markAllAsTouched(); return; }
     for (const field of this.fields) this.address[field.name] = this.address[field.name].trim();
     if (Object.values(this.address).some(v => !v)) { this.error.set('Complete all delivery fields.'); return; }
-    this.busy.set(true); this.error.set('');
+    this.busy.set(true); this.error.set(''); this.fieldErrors.set({});
     this.carts.review().subscribe({ next: cart => {
       this.cart.set(cart); this.token = cart.reviewToken; this.key = crypto.randomUUID();
       this.step.set('review'); this.busy.set(false);
@@ -51,7 +53,7 @@ export class Checkout implements OnInit {
   edit() { if (!this.pending()) this.step.set('address'); }
   confirm() {
     if (this.busy() || !this.cart()?.items.length) return;
-    this.busy.set(true); this.error.set(''); this.pending.set(true);
+    this.busy.set(true); this.error.set(''); this.fieldErrors.set({}); this.pending.set(true);
     this.carts.checkout(this.address, this.token, this.key).subscribe({ next: order => {
       this.order.set(order); this.step.set('done'); this.pending.set(false); this.busy.set(false);
     }, error: e => {
@@ -69,7 +71,11 @@ export class Checkout implements OnInit {
       }
     } });
   }
+  addressError(name: string): string {
+    return this.fieldErrors()['shippingAddress.' + name] || this.fieldErrors()[name] || '';
+  }
   private fail(e: { error?: { message?: string } }) {
+    this.fieldErrors.set(apiFieldErrors(e.error));
     this.error.set(e.error?.message || 'Checkout is unavailable. Your cart has been retained. Please retry.'); this.busy.set(false);
   }
 }

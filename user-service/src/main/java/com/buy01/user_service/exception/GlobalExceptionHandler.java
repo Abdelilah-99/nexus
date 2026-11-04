@@ -11,6 +11,7 @@ import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final String INVALID_VALUE = "Invalid value";
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<Map<String, Object>> handleEmailExists(
@@ -100,7 +101,7 @@ public class GlobalExceptionHandler {
                 .forEach(error ->
                         errors.put(
                                 error.getField(),
-                                error.getDefaultMessage()
+                                error.isBindingFailure() || error.getDefaultMessage() == null ? INVALID_VALUE : error.getDefaultMessage()
                         )
                 );
 
@@ -109,7 +110,7 @@ public class GlobalExceptionHandler {
                 .forEach(error ->
                         errors.put(
                                 error.getObjectName(),
-                                error.getDefaultMessage()
+                                error.getDefaultMessage() == null ? INVALID_VALUE : error.getDefaultMessage()
                         )
                 );
 
@@ -119,11 +120,8 @@ public class GlobalExceptionHandler {
                 .reduce((a, b) -> a + ". " + b)
                 .orElse("Validation failed");
 
-        Map<String, Object> body = new HashMap<>();
-
-        body.put("status", 400);
-        body.put("error", "Validation Failed");
-        body.put("message", message);
+        Map<String, Object> body = responseBody(HttpStatus.BAD_REQUEST, "Validation Failed", message);
+        body.put("details", errors);
         body.put("fields", errors);
 
         return ResponseEntity
@@ -131,19 +129,46 @@ public class GlobalExceptionHandler {
                 .body(body);
     }
 
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<Map<String, Object>> handleForbidden(ForbiddenException ex) {
+        return buildResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
+    }
+
+    @ExceptionHandler(org.springframework.dao.DuplicateKeyException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicate(org.springframework.dao.DuplicateKeyException ex) {
+        return buildResponse(HttpStatus.CONFLICT, "Conflict", "An account with these details already exists");
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<Map<String, Object>> handleUnexpected(Exception ex) {
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+        if (ex instanceof org.springframework.web.method.annotation.MethodArgumentTypeMismatchException) {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        if (ex instanceof org.springframework.web.ErrorResponse springError) {
+            HttpStatus resolved = HttpStatus.resolve(springError.getStatusCode().value());
+            if (resolved != null) status = resolved;
+        }
+        return buildResponse(status, status.getReasonPhrase(), status.is5xxServerError()
+                ? "An unexpected error occurred" : status.getReasonPhrase());
+    }
+
     private ResponseEntity<Map<String, Object>> buildResponse(
             HttpStatus status,
             String error,
             String message
     ) {
-        Map<String, Object> body = new HashMap<>();
+        return ResponseEntity.status(status).body(responseBody(status, error, message));
+    }
 
+    private Map<String, Object> responseBody(HttpStatus status, String error, String message) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("code", "Validation Failed".equals(error) ? "VALIDATION_FAILED" : status.name());
+        body.put("details", Map.of());
         body.put("status", status.value());
         body.put("error", error);
         body.put("message", message);
 
-        return ResponseEntity
-                .status(status)
-                .body(body);
+        return body;
     }
 }

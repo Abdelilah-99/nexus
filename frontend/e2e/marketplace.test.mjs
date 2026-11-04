@@ -218,4 +218,47 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
     await archiveFromDetails(seller, false);
   });
 
+  scenario('gateway and service failures share codes, messages and safe field details', async () => {
+    function contract(result, status, code) {
+      assert.equal(result.status, status);
+      assert.equal(result.body.code, code);
+      assert.equal(typeof result.body.message, 'string');
+      assert.ok(result.body.details && typeof result.body.details === 'object' && !Array.isArray(result.body.details));
+      assert.doesNotMatch(JSON.stringify(result.body), /private-invalid-token|stackTrace|api_secret/);
+    }
+    const anonymous = await client.page.evaluate(async () => {
+      const response = await fetch('/api/cart');
+      return { status: response.status, body: await response.json() };
+    });
+    contract(anonymous, 401, 'UNAUTHORIZED');
+    const expired = await client.page.evaluate(async () => {
+      const response = await fetch('/api/orders/my', { headers: { Authorization: 'Bearer private-invalid-token' } });
+      return { status: response.status, body: await response.json() };
+    });
+    contract(expired, 401, 'UNAUTHORIZED');
+    const csrf = await client.page.evaluate(async () => {
+      const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      return { status: response.status, body: await response.json() };
+    });
+    contract(csrf, 403, 'FORBIDDEN');
+    const product = await api(client.page, '/products/search?minPrice=-1');
+    contract(product, 400, 'VALIDATION_FAILED');
+    assert.equal(typeof product.body.details.minPrice, 'string');
+    const binding = await api(client.page, '/products/search?page=private-rejected-value');
+    contract(binding, 400, 'VALIDATION_FAILED');
+    assert.doesNotMatch(JSON.stringify(binding.body), /private-rejected-value/);
+    const registration = await api(client.page, '/auth/register', 'POST', {
+      fullName: '', username: '', email: 'invalid-email', password: 'x', role: 'CLIENT',
+    });
+    contract(registration, 400, 'VALIDATION_FAILED');
+    assert.equal(typeof registration.body.details.email, 'string');
+    const order = await api(client.page, `/orders/${delivered.id}/archive`, 'PATCH', {});
+    contract(order, 400, 'VALIDATION_FAILED');
+    assert.equal(typeof order.body.details.archived, 'string');
+    contract(await api(stranger.page, `/orders/${delivered.id}`), 403, 'FORBIDDEN');
+    contract(await api(client.page, '/media/images/000000000000000000000000/metadata'), 404, 'NOT_FOUND');
+    contract(await api(client.page, '/orders/000000000000000000000000'), 404, 'NOT_FOUND');
+    contract(await api(client.page, `/unknown-route-${keyword}`), 404, 'NOT_FOUND');
+  });
+
 });

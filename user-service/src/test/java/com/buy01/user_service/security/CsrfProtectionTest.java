@@ -30,6 +30,8 @@ class CsrfProtectionTest {
             throw new AssertionError("Unsafe request must not reach the application");
         });
         assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentType()).startsWith("application/json");
+        assertThat(response.getContentAsString()).contains("\"code\":\"FORBIDDEN\"", "\"details\":{}");
     }
 
     @Test
@@ -63,5 +65,7 @@ class CsrfProtectionTest {
             throw new AssertionError("Invalid token must not reach the application");
         });
         assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentType()).startsWith("application/json");
+        assertThat(response.getContentAsString()).contains("\"code\":\"FORBIDDEN\"", "\"details\":{}");
     }
 }

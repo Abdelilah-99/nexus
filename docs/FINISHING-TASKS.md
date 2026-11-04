@@ -143,3 +143,24 @@ because its media MongoDB container failed during initialization. The unchanged
 rerun passed all six browser scenarios and all functional tests. Sonar then
 reported two java:S8924 test static-import findings (verify/never); the follow-up
 uses the existing Mockito static-import style, with no changed assertions or gates.
+
+
+## API error contract — feat/api-error-contract
+
+Implements the subject's shared code/message/details error response across Gateway,
+Product, User, Media and Order APIs, including authentication/CSRF failures and safe
+unexpected errors. Frontend forms prefer details and retain support for legacy
+field aliases. Registration/profile/checkout show field errors inline. Ownership
+rejections use 403; missing or invalid authentication uses 401. Existing checkout,
+order, archive and analytics behavior is retained.
+
+Local verification: Product 93, User 48, Media 45, Order 231 and Gateway 26 tests
+passed (443 total, zero skipped); 218 frontend tests, coverage thresholds and the
+production build passed. HTTP contract tests cover validation, malformed input,
+status codes and secret/rejected-value protection. All seven browser scenarios passed against the real local HTTPS app, including
+gateway/service status codes and field-detail privacy. Remote CI and SonarQube
+gates must also pass before merging.
+
+After review/merge, the remaining subject tasks are required green merge checks,
+a successful Jenkins build/test/quality/package/staging deployment, and final
+integration testing and documentation.
