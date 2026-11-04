@@ -11,7 +11,7 @@ import bootstrap
 ROOT = Path(__file__).resolve().parents[1]
 
 class ConfigurationTests(unittest.TestCase):
-    def run_entrypoint(self, missing=None):
+    def run_entrypoint(self, missing=None, public=False):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             secrets = root / 'secrets'
@@ -22,11 +22,13 @@ class ConfigurationTests(unittest.TestCase):
             for component, service in bootstrap.COMPONENTS.items():
                 (secrets / f'sonar-{component}-token').write_text('fixture-' + component)
                 (secrets / f'sonar-{component}-project-key').write_text('buy01-' + service)
+            if public:
+                (secrets / 'github-pat').write_text('')
             if missing:
                 (secrets / missing).unlink()
             entrypoint = (ROOT / 'docker-entrypoint.sh').read_text()
             output = root / 'base.yaml'
-            entrypoint = entrypoint.replace('/run/secrets', str(secrets)).replace('/casc/jenkins.yaml', str(ROOT / 'jcasc/jenkins.yaml')).replace('/tmp/jenkins-base.yaml', str(output))
+            entrypoint = entrypoint.replace('/tmp/jenkins-public.', str(root / 'public.')).replace('/run/secrets', str(secrets)).replace('/casc/jenkins.yaml', str(ROOT / 'jcasc/jenkins.yaml')).replace('/tmp/jenkins-base.yaml', str(output))
             # Replace only OS handoff tools in a private PATH, never start a controller.
             tools = root / 'bin'
             tools.mkdir()
@@ -37,7 +39,9 @@ class ConfigurationTests(unittest.TestCase):
             env = {k: v for k, v in os.environ.items() if not k.startswith('SONAR_')}
             env.update(PATH=str(tools) + os.pathsep + os.environ['PATH'], CASC_JENKINS_CONFIG=str(ROOT / 'jcasc/jenkins.yaml'))
             result = subprocess.run(['bash', '-c', entrypoint], env=env, text=True, capture_output=True, check=True)
-            return json.loads(result.stdout), output.read_text() if output.exists() else None
+            exported = json.loads(result.stdout)
+            selected = Path(exported['CASC_JENKINS_CONFIG'])
+            return exported, selected.read_text() if selected != ROOT / 'jcasc/jenkins.yaml' else None
 
     def test_all_seven_credentials_and_keys_are_exported(self):
         exported, fallback = self.run_entrypoint()
@@ -77,11 +81,25 @@ class ConfigurationTests(unittest.TestCase):
         self.assertIn("dir('order-service')", pipeline)
         self.assertIn('media-service order-service gateway discovery;', pipeline)
         self.assertIn('docker image inspect order-service:${BUILD_NUMBER}', pipeline)
-        self.assertIn('check_container buy01-order-service || return 1', pipeline)
-        self.assertIn('check_container order-mongodb || return 1', pipeline)
+        self.assertIn('ps --all --quiet "$SERVICE"', pipeline)
+        self.assertIn('check_container "$CONTAINER_ID" || return 1', pipeline)
+        self.assertIn('media-mongodb user-mongodb order-mongodb', pipeline)
+        self.assertIn('media-service order-service gateway frontend; do', pipeline)
         self.assertIn("'**/target/site/jacoco/**, frontend/coverage/frontend/**'", pipeline)
         workflow = (ROOT.parent / '.github/workflows/quality.yml').read_text()
         self.assertIn('media-service order-service gateway discovery;', workflow)
         self.assertIn('test -s "$service/target/site/jacoco/jacoco.xml"', workflow)
         self.assertIn('**/target/site/jacoco/**', workflow)
         self.assertIn('**/target/surefire-reports/*.xml', workflow)
+
+    def test_public_checkout_omits_empty_github_credentials(self):
+        for missing in (None, 'sonar-order-token'):
+            with self.subTest(missing=missing):
+                exported, selected = self.run_entrypoint(missing, public=True)
+                self.assertNotIn('github-mr-jenk', selected)
+                self.assertNotIn('${GITHUB_PAT}', selected)
+                self.assertIn('${JENKINS_ADMIN_PASSWORD}', selected)
+                if missing is None:
+                    self.assertIn('${SONAR_ORDER_TOKEN}', selected)
+                else:
+                    self.assertNotIn('${SONAR_', selected)

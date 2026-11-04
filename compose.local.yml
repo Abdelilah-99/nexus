@@ -18,7 +18,7 @@ services:
     container_name: buy02-local-gateway
     build: ./gateway
     volumes:
-      - ./.local/certs/gateway-keystore.p12:/run/secrets/gateway-keystore.p12:ro
+      - ./.local/certs:/run/secrets:ro
   user-service:
     container_name: buy02-local-user-service
     build: ./user-service
@@ -35,5 +35,4 @@ services:
     container_name: buy02-local-frontend
     build: ./frontend
     volumes:
-      - ./.local/certs/gateway-keystore.crt:/etc/nginx/certs/gateway-keystore.crt:ro
-      - ./.local/certs/gateway-keystore.key:/etc/nginx/certs/gateway-keystore.key:ro
+      - ./.local/certs:/etc/nginx/certs:ro

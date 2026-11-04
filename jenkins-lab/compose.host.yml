@@ -1,0 +1,59 @@
+# Rootless-host alternative to the privileged Docker-in-Docker lab.
+# Start with scripts/run-jenkins-host.sh; reuses the existing Jenkins home and Sonar network.
+services:
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    image: buy02-jenkins-host:local
+    container_name: jenkins
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8085:8080"
+    extra_hosts:
+      - "host.docker.internal:${JENKINS_TEST_HOST:?Set JENKINS_TEST_HOST}"
+    environment:
+      DOCKER_HOST: unix:///var/run/docker.sock
+      JENKINS_DOCKER_SOCKET: /var/run/docker.sock
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+      TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE: ${JENKINS_DOCKER_SOCKET_HOST:?Set JENKINS_DOCKER_SOCKET_HOST}
+      CASC_JENKINS_CONFIG: /casc/jenkins.yaml
+      CASC_STRICT_SECRET_RESOLUTION: "true"
+      SECRETS: /run/secrets
+      JAVA_OPTS: -Djenkins.install.runSetupWizard=false -Xms256m -Xmx768m
+      PUPPETEER_SKIP_DOWNLOAD: "true"
+      MAVEN_OPTS: -Xmx768m
+      NODE_OPTIONS: --max-old-space-size=1024
+      COMPOSE_FILE: docker-compose.yml:compose.jenkins-host.yml
+      DEPLOY_PROJECT: buy02-staging
+      DEPLOY_CERT_VOLUME: buy02-staging-certs
+      DEPLOY_MONGO_INIT_VOLUME: buy02-staging-mongo-init
+      FRONTEND_PORT: "4300"
+      GATEWAY_PORT: "127.0.0.1:8445"
+      KAFKA_PUBLISH: "127.0.0.1:19092"
+      PRODUCT_MONGO_PORT: "37019"
+      MEDIA_MONGO_PORT: "37020"
+      USER_MONGO_PORT: "37017"
+      ORDER_MONGO_PORT: "37021"
+      CORS_ALLOWED_ORIGINS: http://localhost:4300,https://localhost:4300
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - ${JENKINS_DOCKER_SOCKET_HOST}:/var/run/docker.sock
+      - ./jcasc:/casc:ro
+      - ./jenkins-secrets:/run/secrets:ro
+    networks:
+      - jenkins-network
+    healthcheck:
+      test: [CMD-SHELL, 'curl -fsS http://localhost:8080/login > /dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+volumes:
+  jenkins_home:
+    external: true
+    name: jenkins-lab_jenkins_home
+networks:
+  jenkins-network:
+    external: true
+    name: jenkins-lab_jenkins-network

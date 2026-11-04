@@ -2,7 +2,7 @@
 # The plain-credentials plugin supplies the file/secretBytes credential schema.
 jenkins:
     systemMessage: |
-        Buy01 Jenkins
+        Buy02 Jenkins
 
         This Jenkins controller is configured automatically
         using Jenkins Configuration as Code (JCasC).
@@ -133,6 +133,7 @@ credentials:
                   # GitHub
                   # ==================================
 
+                  # BEGIN GITHUB CREDENTIALS
                   - usernamePassword:
                         scope: GLOBAL
 
@@ -143,6 +144,7 @@ credentials:
                         username: "${GITHUB_USERNAME}"
 
                         password: "${GITHUB_PAT}"
+                  # END GITHUB CREDENTIALS
 
                   # ==================================
                   # Buy01 .env

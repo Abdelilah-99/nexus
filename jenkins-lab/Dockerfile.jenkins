@@ -37,9 +37,6 @@ RUN curl -fsSL https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/s
     ln -s /opt/sonar-scanner-7.2.0.5079/bin/sonar-scanner /usr/local/bin/sonar-scanner && \
     rm /tmp/scanner.zip && rm -rf /var/lib/apt/lists/*
 
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh
-
 # Fail the image build if a required pipeline tool is missing.
 RUN java -version && node --version && npm --version && \
     docker --version && docker compose version
@@ -61,6 +58,9 @@ RUN jenkins-plugin-cli --plugins \
     sonar:2.19.0\
     email-ext
 
+
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod 0755 /usr/local/bin/docker-entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 USER root
