@@ -1,3 +1,4 @@
+import { apiFieldErrors } from '../../../core/api-error';
 import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -17,6 +18,7 @@ export class Register {
   readonly loading = signal<boolean>(false);
   readonly uploadingAvatar = signal<boolean>(false);
   readonly errorMessage = signal<string>('');
+  readonly fieldErrors = signal<Record<string, string>>({});
   readonly showPassword = signal<boolean>(false);
   readonly avatarPreview = signal<string>('');
 
@@ -87,6 +89,7 @@ export class Register {
 
     this.loading.set(true);
     this.errorMessage.set('');
+    this.fieldErrors.set({});
 
     const payload = {
       ...this.registerForm.value,
@@ -100,6 +103,7 @@ export class Register {
         this.router.navigate([dest]);
       },
       error: (err) => {
+        this.fieldErrors.set(apiFieldErrors(err.error));
         this.errorMessage.set(this.registrationError(err));
         this.loading.set(false);
       }
@@ -114,11 +118,11 @@ export class Register {
     return [...new Set(messages)].join('. ');
 }
 
-  private registrationError(err: { error?: { fields?: Record<string, string>; message?: string } | string; status?: number }): string {
+  private registrationError(err: { error?: { fields?: Record<string, string>; details?: Record<string, string>; message?: string } | string; status?: number }): string {
     const body = err.error;
     if (typeof body === 'string' && body) return body;
     if (body && typeof body === 'object') {
-      const fields = body.fields ? this.fieldError(body.fields) : '';
+      const fields = this.fieldError(apiFieldErrors(body));
       if (fields) return fields;
       if (body.message) return body.message;
     }

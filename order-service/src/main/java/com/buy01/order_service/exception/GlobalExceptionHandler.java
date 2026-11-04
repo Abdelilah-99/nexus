@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     private static final String BAD_REQUEST = "Bad Request";
     private static final String VALIDATION_FAILED = "Validation Failed";
     private static final String INVALID_INPUT = "Invalid input data";
-    private static final String DEFAULT_FIELD_MESSAGE = "invalid value";
+    private static final String DEFAULT_FIELD_MESSAGE = "Invalid value";
 
     /** Invalid @RequestBody or @ModelAttribute (body fields, filter query parameters). */
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -126,8 +126,8 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception ex, HttpServletRequest request) {
         if (ex instanceof org.springframework.web.ErrorResponse springError) {
             HttpStatusCode status = springError.getStatusCode();
-            String detail = springError.getBody().getDetail();
-            return build(status, reasonOf(status), detail == null ? "Request failed" : detail, request, null);
+            return build(status, reasonOf(status), status.is5xxServerError()
+                    ? "An unexpected error occurred" : reasonOf(status), request, null);
         }
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal Server Error",
                 "An unexpected error occurred", request, null);
@@ -141,6 +141,7 @@ public class GlobalExceptionHandler {
     }
 
     private static String messageOf(MessageSourceResolvable error) {
+        if (error instanceof FieldError field && field.isBindingFailure()) return DEFAULT_FIELD_MESSAGE;
         String message = error.getDefaultMessage();
         return message == null ? DEFAULT_FIELD_MESSAGE : message;
     }

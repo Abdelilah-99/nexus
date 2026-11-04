@@ -29,7 +29,8 @@
 
       <div>
         <label class="form-label" for="profileUsername">{{ user?.role === 'SELLER' ? 'Studio handle' : 'Username handle' }} <span class="text-danger">*</span></label>
-        <input id="profileUsername" type="text" class="form-control" formControlName="username" autocomplete="username">
+        <input id="profileUsername" type="text" class="form-control" formControlName="username" (input)="fieldErrors.set({})" [attr.aria-describedby]="fieldErrors()['username'] ? 'username-server-error' : null" autocomplete="username">
+        <small *ngIf="fieldErrors()['username']" id="username-server-error" class="text-danger">{{ fieldErrors()['username'] }}</small>
         <div *ngIf="profileForm.controls['username'].touched && profileForm.controls['username'].invalid" class="text-danger small mt-1">Please enter at least 2 characters.</div>
       </div>
 

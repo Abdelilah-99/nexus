@@ -10,7 +10,8 @@
     <div class="row g-3">
       <div class="col-12 col-md-6" *ngFor="let field of fields">
         <label [for]="field.name" class="form-label">{{ field.label }}</label>
-        <input [id]="field.name" [name]="field.name" [type]="field.name === 'phone' ? 'tel' : 'text'" class="form-control" required pattern=".*\S.*" [maxlength]="field.max" [autocomplete]="field.autocomplete" [(ngModel)]="address[field.name]" #control="ngModel" [disabled]="busy()" [attr.aria-invalid]="control.invalid && control.touched">
+        <input [id]="field.name" [name]="field.name" [type]="field.name === 'phone' ? 'tel' : 'text'" class="form-control" required pattern=".*\S.*" [maxlength]="field.max" [autocomplete]="field.autocomplete" [(ngModel)]="address[field.name]" (ngModelChange)="fieldErrors.set({})" #control="ngModel" [attr.aria-describedby]="addressError(field.name) ? field.name + '-server-error' : null" [disabled]="busy()" [attr.aria-invalid]="(control.invalid && control.touched) || !!addressError(field.name)">
+        <small *ngIf="addressError(field.name)" [id]="field.name + '-server-error'" class="text-danger">{{ addressError(field.name) }}</small>
         <small *ngIf="control.invalid && control.touched" class="text-danger">Enter {{ field.label.toLowerCase() }}.</small>
       </div>
     </div>

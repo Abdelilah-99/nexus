@@ -16,7 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.buy01.user_service.client.MediaServiceClient;
 import com.buy01.user_service.dto.external.MediaMetadataResponse;
-import com.buy01.user_service.exception.UnauthorizedException;
+import com.buy01.user_service.exception.ForbiddenException;
 import com.buy01.user_service.model.Role;
 import com.buy01.user_service.model.User;
 import com.buy01.user_service.repository.UserRepository;
@@ -72,7 +72,7 @@ class ProfileServiceAvatarTest {
         when(mediaServiceClient.fetchMetadata("m1"))
                 .thenReturn(new MediaMetadataResponse("m1", "f", "image/png", "https://media/u", 1, "other"));
 
-        assertThrows(UnauthorizedException.class, () -> profileService.updateProfile("u1", "alice", "m1"));
+        assertThrows(ForbiddenException.class, () -> profileService.updateProfile("u1", "alice", "m1"));
     }
 
     @Test

@@ -109,7 +109,7 @@ class SecurityComponentsTest {
         when(webRequest.getNativeRequest()).thenReturn(servletRequest);
         when(servletRequest.getAttribute(UserContextFilter.USER_ATTRIBUTE)).thenReturn(null);
 
-        org.junit.jupiter.api.Assertions.assertThrows(com.buy01.product_service.exception.UnauthorizedException.class,
+        org.junit.jupiter.api.Assertions.assertThrows(org.springframework.web.server.ResponseStatusException.class,
                 () -> resolver.resolveArgument(parameter, null, webRequest, null));
     }
 

@@ -1,6 +1,7 @@
 package com.buy01.gateway.security;
 
 import org.springframework.context.annotation.Bean;
+import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -28,6 +29,11 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(errors -> errors
+                        .authenticationEntryPoint((request, response, error) -> ApiErrorWriter.write(response,
+                                HttpStatus.UNAUTHORIZED, "Authentication required"))
+                        .accessDeniedHandler((request, response, error) -> ApiErrorWriter.write(response,
+                                HttpStatus.FORBIDDEN, "Request is not permitted")))
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(new CookieCsrfTokenRepository())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))

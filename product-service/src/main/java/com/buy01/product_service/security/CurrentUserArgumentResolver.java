@@ -6,7 +6,8 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-import  com.buy01.product_service.exception.UnauthorizedException;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import  jakarta.servlet.http.HttpServletRequest;
  
@@ -30,7 +31,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             CurrentUser  annotation = parameter.getParameterAnnotation(CurrentUser.class);
             boolean requiired = annotation == null || annotation.requiired();
         if (user == null && requiired) {
-            throw new UnauthorizedException("Missing or invalid authentication context");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
             return  user;
     }

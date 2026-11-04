@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import com.buy01.user_service.client.MediaServiceClient;
 import com.buy01.user_service.dto.UserDto;
 import com.buy01.user_service.dto.external.MediaMetadataResponse;
-import com.buy01.user_service.exception.UnauthorizedException;
+import com.buy01.user_service.exception.ForbiddenException;
 import com.buy01.user_service.exception.UserNotFoundException;
 import com.buy01.user_service.model.User;
 import com.buy01.user_service.repository.UserRepository;
@@ -56,7 +56,7 @@ public class ProfileService {
     private String resolveAvatarUrl(String mediaId, String userId) {
         MediaMetadataResponse media = mediaServiceClient.fetchMetadata(mediaId);
         if (!userId.equals(media.uploaderId())) {
-            throw new UnauthorizedException("You do not own media: " + mediaId);
+            throw new ForbiddenException("You do not own media: " + mediaId);
         }
         return media.url();
     }
