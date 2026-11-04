@@ -96,3 +96,14 @@ Do not remove volumes or use `--initialize` on the persistent SonarQube server.
 The Order Service now persists orders and has real MongoDB integration tests.
 An application health check alone still does not prove that Pay on Delivery works
 end to end; verify the deployed purchase, order-management and analytics flows.
+
+
+## Jenkins validation before merging a team PR
+
+Use `pull-request-checks` with the numeric PR_NUMBER parameter and include its build
+URL in the review. The controller-owned pipeline validates a same-repository,
+trusted team PR, pins its head, merges current main and runs backend/frontend
+builds and tests. Fork/untrusted authors are rejected because this lab uses the
+host Docker daemon. Production file credentials are not bound by this job. Existing
+GitHub Actions checks continue enforcing Sonar gates on PRs; first-pipeline runs
+all gates and deployment after the reviewed merge. The PR job never deploys.

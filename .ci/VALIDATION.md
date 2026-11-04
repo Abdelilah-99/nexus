@@ -266,3 +266,29 @@ repositories can supply a GitHub read token. Email notifications require explici
 Pending: reviewed merge into main, hosted CI evidence for this branch, then a full
 manual Jenkins run with deployment and staging smoke tests. No staging success is
 claimed by these preparation checks.
+
+
+## Required audit corrections — 2026-11-04
+
+Branch fix/audit-required-items repairs standalone Eureka peer identity and adds a
+controller-owned Jenkins job for trusted team PR builds/tests. The PR head is
+pinned, merged with current main and tested without binding production file
+credentials or deploying. Fork/untrusted author and invalid-number tests verify
+the job boundary. The main pipeline rejects empty/example Cloudinary settings.
+
+Observed: 30 provisioning/configuration/Compose/PR/deployment-preflight tests and
+16 CI helper tests passed. Discovery clean verify passed 2 tests, including actual
+peer-list exclusion. Its candidate image became healthy with empty replica lists;
+the isolated probe container was removed. Both candidate pipelines validated on
+the live Jenkins controller. Main #10 redeployed corrected private Cloudinary
+settings successfully. PR check #1 validated PR #26 with current main, publishing
+446 passed backend tests, 0 failed/skipped; frontend build and 218 tests passed.
+
+After restarting staging Product Service and confirming real routed search HTTP
+200, all 9 browser audit checks passed. The separate real Cloudinary product form
+upload/create/edit/delete and authorization probes passed with 0 JavaScript
+errors, HTTP 5xx responses or console warnings. Temporary fixtures were cleaned
+up; no existing app data or volumes were removed. Credentials remain ignored.
+
+Review/merge, hosted CI for this branch, and deployment of the Eureka/preflight
+code from merged main remain separate final checks; see docs/AUDIT-READINESS.md.

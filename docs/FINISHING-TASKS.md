@@ -195,3 +195,20 @@ timeouts. The host Docker daemon is rootless. The current local app remains
 healthy on port 4200, which the existing Jenkins Docker-in-Docker port mapping
 also reserves. Plan the staging runtime/ports before starting this stack; preserve
 existing application and Jenkins/SonarQube volumes. No staging success is claimed.
+
+
+## Required audit follow-up — fix/audit-required-items
+
+The full audit is in AUDIT-READINESS.md. This branch adds the controller-owned
+Jenkins PR validation job and makes the standalone Eureka identity match its own
+service URL, avoiding replication to localhost as a separate peer. The regression
+asserts that the peer list is empty and the own URL is recognized.
+
+Staging Cloudinary example values were replaced privately with the working local
+configuration, preserving all database/JWT/TLS values. Jenkins was reloaded so its
+file credential picks up the correction. No credentials are committed. Main build
+#10 passed and redeployed this configuration. Nine staging browser audit checks
+and the real seller upload/create/edit/delete flow passed after a service restart.
+Jenkins pull-request-checks #1 passed PR #26 merged with current main. The discovery
+fix passes regression and isolated runtime checks and awaits reviewed merge/deploy. Historical PRs #1/#3/#10 lack recorded
+approval; current required reviews remain enforced and no history is rewritten.
