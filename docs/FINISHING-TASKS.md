@@ -42,8 +42,8 @@ Owner: each developer for owned services; agree on the contract together.
 
 Owners: all three; repository owner for GitHub settings.
 
-- Main ruleset has review requirements but an empty required-check list. Require
-  Tests and SonarQube gates and resolve review conversations before merging.
+- Completed 2026-11-04: main requires Tests and SonarQube gates from GitHub
+  Actions and an up-to-date branch, alongside its existing review requirement.
 - Repair/verify Jenkins Docker-in-Docker startup, then run build, tests, all seven
   Sonar gates, packaging and staging deployment. Preserve actual run evidence.
 - Test service restarts and discovery convergence. Verify real routed API readiness;
@@ -164,3 +164,20 @@ gates must also pass before merging.
 After review/merge, the remaining subject tasks are required green merge checks,
 a successful Jenkins build/test/quality/package/staging deployment, and final
 integration testing and documentation.
+
+
+## Main merge protection — 2026-11-04
+
+PR #24 is merged as 876d239. The live Protect main ruleset 25739405 now requires
+Tests and SonarQube gates from GitHub Actions (integration 15368), with strict
+up-to-date checks. Existing review requirements, code-quality rules and bypass
+settings were preserved. Both the ruleset readback and the effective rules for
+main were verified; .ci/main-ruleset.json records the applied configuration.
+
+Next required task: Jenkins build → test → quality gate → package → staging.
+Current inspection: Jenkins is Created, its nested Docker daemon is stopped, and
+the prior daemon logs contain mount-permission failures and containerd startup
+timeouts. The host Docker daemon is rootless. The current local app remains
+healthy on port 4200, which the existing Jenkins Docker-in-Docker port mapping
+also reserves. Plan the staging runtime/ports before starting this stack; preserve
+existing application and Jenkins/SonarQube volumes. No staging success is claimed.

@@ -18,16 +18,35 @@ The persistent SonarQube dashboard at http://localhost:9000 retains Jenkins `mai
 
 ## Required review and merge protection
 
-1. Activate the Actions workflow by committing and pushing it with the changes.
-2. Keep `main` changes in pull requests. Resolve all issues introduced by the change. Document a false positive with a SonarQube issue link, concrete evidence, and an independent reviewer's approval. Do not dismiss findings simply to make a gate pass.
-3. Once a qualifying GitHub plan is available (or after an explicitly authorized change to public visibility), apply the prepared rule:
+The active [Protect main ruleset](https://github.com/AyyoubMh48/buy-02/rules/25739405)
+applies to the default branch (`main`). Its saved configuration is
+[main-ruleset.json](main-ruleset.json). The live configuration was verified on
+2026-11-04 through both the ruleset API and the effective rules for `main`.
 
-   ```sh
-   gh api --method PUT repos/AyyoubMh48/buy-02/branches/main/protection --input .ci/main-protection.json
-   ```
+- Pull requests require one approval, stale approvals are dismissed, and the
+  latest push requires approval from someone other than its pusher.
+- `Tests and SonarQube gates` is required from GitHub Actions (integration 15368).
+  Branches must be up to date with `main` before merging.
+- Force pushes and branch deletion are blocked. No bypass actors are configured.
+- Other existing review/code-quality rules are preserved. Resolved review threads
+  are not currently enforced by the ruleset; address review feedback before merging.
 
-   This requires the quality check, an up-to-date branch, one independent approval of the latest push, resolved conversations, and applies to administrators. Force pushes and branch deletion are disabled. GitHub currently rejects protected branches on this private repository's plan; the JSON file alone does not enforce merges.
-4. Compare coverage, duplication, reliability, maintainability, and security metrics in the persistent SonarQube activity view and saved CI artifacts. Review the scheduled result daily.
+An administrator can reapply the saved ruleset after reviewing its diff:
+
+```sh
+gh api --method PUT repos/AyyoubMh48/buy-02/rulesets/25739405 --input .ci/main-ruleset.json
+```
+
+Verify what actually applies to `main`:
+
+```sh
+gh api repos/AyyoubMh48/buy-02/rules/branches/main
+```
+
+`main-protection.json` is the older classic-protection example. The current live
+configuration uses the ruleset above. A checked-in JSON file alone does not
+activate enforcement. Keep changes in feature-branch PRs, review the latest push,
+and inspect the required pipeline result and saved quality artifacts before merging.
 
 ## Local verification
 
