@@ -37,8 +37,14 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
     assert.equal(next.content.length, 2);
     const filtered = await search(page, { q: keyword, category, page: 0 }, () => page.locator('#categoryFilter').fill(category));
     assert.equal(filtered.totalElements, 13, 'Changing filters resets pagination');
-    await search(page, { category, minPrice: 10 }, () => page.locator('#minPriceFilter').fill('10'));
-    const prices = await search(page, { category, maxPrice: 12 }, () => page.locator('#maxPriceFilter').fill('12'));
+    async function slide(id, value) {
+      await page.$eval(id, (input, price) => {
+        input.value = String(price);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }, value);
+    }
+    await search(page, { category, minPrice: 10 }, () => slide('#minPriceSlider', 10));
+    const prices = await search(page, { category, maxPrice: 12 }, () => slide('#maxPriceSlider', 12));
     assert.equal(prices.totalElements, 2);
     const sorted = await search(page, { category, maxPrice: 12, sort: 'price-desc' }, () => page.select('#sortSelect', 'price-desc'));
     assert.deepEqual(sorted.content.map(product => product.price), [12, 10]);

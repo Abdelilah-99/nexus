@@ -121,11 +121,22 @@
         <label for="minPriceFilter" class="form-label small">Minimum price ($)</label>
         <input id="minPriceFilter" type="number" min="0" step="0.01" max="999999999999.99"
           class="form-control form-control-sm" formControlName="minPrice" aria-describedby="priceFilterError">
+        <label for="minPriceSlider" class="visually-hidden">Minimum price slider</label>
+        <input id="minPriceSlider" type="range" class="form-range mt-2" min="0" step="0.01"
+          [max]="priceSliderMax" [value]="filters.controls.minPrice.value ?? 0"
+          [attr.aria-valuetext]="(filters.controls.minPrice.value ?? 0) | currency:'USD'"
+          (input)="setSliderPrice('minPrice', $event)">
       </div>
       <div class="col-6 col-lg-3">
         <label for="maxPriceFilter" class="form-label small">Maximum price ($)</label>
         <input id="maxPriceFilter" type="number" min="0" step="0.01" max="999999999999.99"
-          class="form-control form-control-sm" formControlName="maxPrice" aria-describedby="priceFilterError">
+          class="form-control form-control-sm" formControlName="maxPrice" aria-describedby="priceFilterError"
+          placeholder="No maximum">
+        <label for="maxPriceSlider" class="visually-hidden">Maximum price slider</label>
+        <input id="maxPriceSlider" type="range" class="form-range mt-2" min="0" step="0.01"
+          [max]="priceSliderMax" [value]="filters.controls.maxPrice.value ?? priceSliderMax"
+          [attr.aria-valuetext]="filters.controls.maxPrice.value == null ? 'No maximum price' : (filters.controls.maxPrice.value | currency:'USD')"
+          (input)="setSliderPrice('maxPrice', $event)">
       </div>
       <div class="col-sm-6 col-lg-2">
         <label for="pageSize" class="form-label small">Items per page</label>
