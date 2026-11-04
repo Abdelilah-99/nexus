@@ -293,6 +293,23 @@ The expected sequence is:
 
 A green Jenkins result is meaningful only if the deployment and health-check stages ran as expected. Images are built in the selected Docker daemon; this pipeline does not push them to Docker Hub. Email notifications are disabled unless `CI_NOTIFY_EMAIL` is explicitly configured.
 
+### Validate a pull request in Jenkins
+
+Before merging a team PR, open **pull-request-checks → Build with Parameters**,
+enter its GitHub number as `PR_NUMBER`, and run it. Add the resulting Jenkins build
+link to your PR manually for the reviewer. This job builds and tests the PR combined
+with current `main`, archives JUnit/coverage and the validated merge SHA, and does
+not deploy staging. Keep the required GitHub Actions/SonarQube PR check green too.
+After review and merge, use **first-pipeline → Build Now** for quality gates, images
+and staging deployment.
+
+The PR job is defined by controller-owned files in `jenkins-lab/jcasc/`, so a PR
+cannot replace its Jenkins pipeline definition. This Docker lab accepts manually
+selected, same-repository PRs from trusted team members into main; fork and external
+author builds are rejected. It requires no GitHub PAT for this public repository.
+When updating this setup, pull the reviewed configuration and rerun
+`scripts/run-jenkins-host.sh` after any active builds finish to load JCasC.
+
 ### 7. Open and test the marketplace
 
 | Service | URL |

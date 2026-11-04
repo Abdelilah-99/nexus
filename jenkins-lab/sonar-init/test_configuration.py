@@ -103,3 +103,58 @@ class ConfigurationTests(unittest.TestCase):
                     self.assertIn('${SONAR_ORDER_TOKEN}', selected)
                 else:
                     self.assertNotIn('${SONAR_', selected)
+
+class PullRequestValidationTests(unittest.TestCase):
+    def run_validator(self, metadata, number='26'):
+        with tempfile.TemporaryDirectory() as folder:
+            script = ROOT / 'jcasc/validate-pr.mjs'
+            code = 'globalThis.fetch = async () => ({ok:true,json:async()=>(' + json.dumps(metadata) + ')}); await import(' + json.dumps(script.as_uri()) + ');'
+            result = subprocess.run(['node', '--input-type=module', '-e', code],
+                                    cwd=folder, env=dict(os.environ, PR_NUMBER=number),
+                                    text=True, capture_output=True)
+            file = Path(folder) / 'pr-head.sha'
+            return result.returncode, file.read_text() if file.exists() else None
+
+    def metadata(self):
+        return {'head': {'repo': {'full_name': 'AyyoubMh48/buy-02'}, 'sha': 'a' * 40},
+                'base': {'ref': 'main'}, 'author_association': 'COLLABORATOR'}
+
+    def test_trusted_team_pull_request_pins_exact_commit(self):
+        status, sha = self.run_validator(self.metadata())
+        self.assertEqual(status, 0)
+        self.assertEqual(sha, 'a' * 40 + '\n')
+
+    def test_forks_and_untrusted_authors_cannot_reach_build_steps(self):
+        for field in ('fork', 'author'):
+            metadata = self.metadata()
+            if field == 'fork':
+                metadata['head']['repo']['full_name'] = 'external/fork'
+            else:
+                metadata['author_association'] = 'NONE'
+            with self.subTest(field=field):
+                status, sha = self.run_validator(metadata)
+                self.assertNotEqual(status, 0)
+                self.assertIsNone(sha)
+
+    def test_non_numeric_parameter_is_rejected(self):
+        status, sha = self.run_validator(self.metadata(), '26; invalid')
+        self.assertNotEqual(status, 0)
+        self.assertIsNone(sha)
+
+
+class DeploymentEnvironmentTests(unittest.TestCase):
+    def test_example_storage_values_cannot_be_deployed(self):
+        result = subprocess.run(['node', str(ROOT / 'check-deploy-env.mjs'), '.env.example'],
+                                cwd=ROOT.parent, text=True, capture_output=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('CLOUDINARY_CLOUD_NAME', result.stderr)
+        self.assertNotIn('CLOUDINARY_CLOUD_NAME=', result.stderr)
+
+    def test_non_example_storage_values_are_accepted_without_printing_them(self):
+        with tempfile.NamedTemporaryFile(mode='w') as file:
+            file.write('CLOUDINARY_CLOUD_NAME=private-audit-cloud\nCLOUDINARY_API_KEY=private-audit-key\nCLOUDINARY_API_SECRET=private-audit-secret\n')
+            file.flush()
+            result = subprocess.run(['node', str(ROOT / 'check-deploy-env.mjs'), file.name],
+                                    cwd=ROOT.parent, text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0)
+            self.assertNotIn('private-audit', result.stdout + result.stderr)

@@ -254,6 +254,20 @@ jobs:
 
             }
 
+    - script: |
+          pipelineJob('pull-request-checks') {
+              description('Build and test a trusted team PR with current main before review and merge. Sonar gates remain required in GitHub Actions; staging is deployed by first-pipeline after merge.')
+              parameters {
+                  stringParam('PR_NUMBER', '', 'Team pull request number targeting main')
+              }
+              definition {
+                  cps {
+                      script(new File('/casc/pr-validation.groovy').text)
+                      sandbox()
+                  }
+              }
+          }
+
 # BEGIN SONAR SERVER
 # sonar:2.19.0 SonarGlobalConfiguration / SonarInstallation data-bound fields.
 unclassified:

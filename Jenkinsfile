@@ -433,6 +433,7 @@ pipeline {
                             -p "${DEPLOY_PROJECT:-buy01}" \\
                             --env-file "$ENV_FILE" \\
                             config > /dev/null
+                        node jenkins-lab/check-deploy-env.mjs "$ENV_FILE"
                         echo "Docker Compose configuration is valid."
                     '''
                 }
