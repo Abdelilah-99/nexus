@@ -181,3 +181,24 @@ status before bootstrap and reports only endpoint/status on initialization error
 the Compose health check also matches the status field rather than any UP substring.
 Ten scanner/readiness/diagnostic fixture tests pass. The local disposable server
 and its database were removed without touching the persistent SonarQube stack.
+
+
+## Disposable SonarQube startup evidence — 2026-11-04
+
+PR #21 is merged as a421524. Main run 41817057073 passed. The earlier scheduled
+run 41805873700 passed tests and browser flows, but Compose reported that its
+SonarQube container exited (0) before readiness. The workflow removed it without
+saving application logs, so the underlying cause cannot be inferred from that
+run. No memory, Elasticsearch or database failure is assumed.
+
+The startup helper now saves redacted Compose output and failure diagnostics
+before the existing cleanup. It preserves nonzero startup/timeout exit codes and
+uses only read-only diagnostic commands. No automatic retry or gate changes were
+introduced. The always-uploaded reports/quality artifact already includes its log.
+
+Validation: all 16 CI helper tests passed, including six startup regression tests
+covering redaction, original failure codes, diagnostic failure, timeouts, invalid
+container IDs and missing prerequisites. All 22 provisioning/configuration tests
+passed. Compose configuration and workflow YAML/command/report wiring checks
+passed, as did Bash syntax and git diff whitespace checks. These are local checks;
+no new hosted run or live reproduction of the historical failure is claimed.

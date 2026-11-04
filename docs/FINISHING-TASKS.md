@@ -103,3 +103,21 @@ Run 41663871876 passed backend, frontend and browser tests, but rejected four
 java:S1192 repeated-literal findings in AnalyticsRepository and OrderSearchRepository.
 Shared Mongo operators/field names now use constants. No rules, exclusions or
 quality-gate thresholds were changed; the follow-up remote run verifies the result.
+
+
+## Update — 2026-11-04
+
+PR #21 merged as a421524 and main run 41817057073 passed. Seller-specific order
+progress is implemented and merged; audit only legacy orders whose delivery was
+incorrectly recorded by the previous shared status.
+
+The older scheduled SonarQube startup failure has no surviving application logs.
+Branch fix/sonar-startup-diagnostics preserves safe startup evidence for the next
+failure; its local helper/configuration checks pass. This improves diagnosis and
+does not claim to repair an unidentified runtime cause. Review and validate that
+branch in hosted CI before merging.
+
+The next feature to implement is per-user archive/hide for terminal orders,
+keeping purchase snapshots and analytics and enforcing ownership. Coordinate with
+Abdelillah before editing the shared order service. Stock recovery, the API error
+contract, required CI checks and Jenkins staging validation remain open above.
