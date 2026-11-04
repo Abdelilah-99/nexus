@@ -12,7 +12,7 @@ The target experience is browsing → cart → checkout → order tracking, with
 | Product discovery | Keywords, category, price and stock filters, sorting, pagination; Angular catalog and MongoDB indexes | Verify behavior and query performance with representative data |
 | Cart | Persistent client cart, add/update/remove/clear, availability checks and totals | Verify full integration and critical end-to-end scenarios |
 | Pay on Delivery | Address → review → confirmation; review tokens, idempotency keys and checkout recovery | Verify retry and failure handling in deployment |
-| Orders | Customer/seller pages, paginated search, details/timeline, cancellation, reorder-to-cart and status updates; category snapshots and stock reservation | Removal/archive behavior and further failure-recovery validation |
+| Orders | Customer/seller pages, paginated search, details/timeline, cancellation, reorder-to-cart and status updates; category snapshots and stock reservation | Review archive behavior and final order integration |
 | Customer analytics | Delivered-order spending, order count, units, top products/categories and monthly charts in the profile | Verify live integration and team acceptance of financial rules |
 | Seller analytics | Delivered-order revenue, units sold, best sellers, categories and monthly sales/order trends in profile and seller dashboard | Verify live integration and team acceptance of financial rules |
 | Testing and delivery | Backend/Angular tests, Jenkins pipeline, SonarQube and GitHub quality workflow | Verify the new browser job on CI and the staging deployment |
@@ -369,7 +369,7 @@ For a full failure, inspect the **first real error** in Jenkins Console Output, 
 
 - Product persistence and Kafka publication are separate operations; failures can leave product and media state inconsistent.
 - Stock reservation and order persistence span services. Compensation failures require reconciliation; consult the Order Service documentation.
-- Order removal/archive is not implemented. Mixed-seller orders have separate seller delivery progress; historical records without that data use their original status.
+- Finished orders can be archived and restored separately by each account; snapshots and analytics are preserved. Mixed-seller orders have separate seller delivery progress; historical records without that data use their original status.
 - Analytics support at most 366 days per request and count delivered seller lines by order placement date, not delivery date. Revenue is inferred from delivery status; there is no payment collection ledger.
 - The GitHub webhook needs an externally reachable Jenkins URL; `localhost:8085` is not reachable by GitHub.
 - SonarQube Community Build does not provide native PR/branch analysis. The [GitHub quality workflow](.ci/README.md) performs isolated whole-code scans on every branch and PR without overwriting the main dashboard.
@@ -462,6 +462,17 @@ Mutating gateway requests also require CSRF protection: obtain the token from `G
 | `PATCH` | `/api/orders/{id}/status` | Related seller updates status with optional note |
 
 List filters: `status`, ISO dates `from`/`to` (inclusive), and `q` (order ID or product-name text). Lists also accept `page` and `size` and return paginated responses. Responses contain product/price/category snapshots, totals and status history. Seller responses restrict items and totals to the seller's products.
+
+Personal list visibility: `PATCH /api/orders/{id}/archive` accepts
+`{"archived": true}` to archive or `{"archived": false}` to restore. Customers can
+archive terminal orders (`DELIVERED`, `CANCELLED`, `COMPLETED`); sellers can archive
+their own delivered/cancelled fulfillment even if other sellers are still working.
+The default order lists exclude your archived orders; add `archived=true` to list
+only your archived orders, with the same search, date, status and pagination options.
+Order details remain accessible to the same authorized accounts. Archive/restore
+never changes stock, statuses, totals or analytics. In Angular, open order details
+and choose **Archive order**, or select **Archived orders** in the order list to
+find and restore an archived order.
 
 Allowed transitions: `PENDING → CONFIRMED → SHIPPED → DELIVERED`, with cancellation allowed from `PENDING` or `CONFIRMED`. `DELIVERED` and `CANCELLED` are terminal states. Each seller has a separate fulfillment and timeline. Customer status is `IN_PROGRESS` when parts differ, `DELIVERED` only when all parts are delivered, and `COMPLETED` when delivered and cancelled parts finish together. Seller responses and filters use only their own fulfillment.
 

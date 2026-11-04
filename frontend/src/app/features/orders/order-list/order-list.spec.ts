@@ -46,7 +46,7 @@ describe('OrderList', () => {
     expect(api.list).toHaveBeenLastCalledWith('my', list.filters, 2, PAGE_SIZE);
 
     list.reset();
-    expect(list.filters).toEqual({ status: '', from: '', to: '', q: '' });
+    expect(list.filters).toEqual({ status: '', from: '', to: '', q: '', archived: '' });
     expect(api.list).toHaveBeenLastCalledWith('my', {}, 0, PAGE_SIZE);
     expect(list.filtered).toBe(false);
   });
@@ -79,4 +79,16 @@ describe('OrderList', () => {
     expect(list.statusBadge('CANCELLED')).toBe('buy-badge buy-badge-danger');
     expect(list.shortId(order.id)).toBe('23DEF456');
   });
+  it('shows personal archived orders and retains that view when paginating', () => {
+    const list = create('seller');
+    list.filters.archived = 'true';
+    list.search();
+    expect(list.showingArchived).toBe(true);
+    expect(list.filtered).toBe(false);
+    list.load(1);
+    expect(api.list).toHaveBeenLastCalledWith('seller', expect.objectContaining({ archived: 'true' }), 1, PAGE_SIZE);
+    list.reset();
+    expect(list.showingArchived).toBe(false);
+  });
+
 });

@@ -125,7 +125,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public OrderResponse getOrder(String orderId, AuthenticatedUser user) {
-        Order order = findOrder(orderId);
+        return visibleOrder(findOrder(orderId), user);
+    }
+
+    private OrderResponse visibleOrder(Order order, AuthenticatedUser user) {
         if (order.isPlacedBy(user.userId())) {
             return orderMapper.toResponse(order);
         }
@@ -133,6 +136,27 @@ public class OrderServiceImpl implements OrderService {
             return orderMapper.toSellerResponse(order, user.userId());
         }
         throw new ForbiddenException("You do not have access to this order");
+    }
+
+    @Override
+    public OrderResponse archive(String orderId, boolean archived, AuthenticatedUser user) {
+        Order order = findOrder(orderId);
+        OrderResponse view = visibleOrder(order, user);
+        if (archived && !view.status().isTerminal()) {
+            throw new ConflictException("Only finished orders can be archived");
+        }
+        if (order.isArchivedBy(user.userId()) == archived) {
+            return view;
+        }
+        List<String> owners = new ArrayList<>(order.getArchivedBy() == null ? List.of() : order.getArchivedBy());
+        if (archived) {
+            owners.add(user.userId());
+        } else {
+            owners.remove(user.userId());
+        }
+        order.setArchivedBy(owners);
+        // @Version prevents lost archive or fulfillment changes during concurrent saves.
+        return visibleOrder(orderRepository.save(order), user);
     }
 
     @Override

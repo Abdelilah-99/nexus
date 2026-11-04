@@ -25,7 +25,7 @@ export class OrderList implements OnInit {
   readonly result = signal<OrderPage | null>(null);
   readonly busy = signal(false);
   readonly error = signal('');
-  filters: OrderFilters = { status: '', from: '', to: '', q: '' };
+  filters: OrderFilters = { status: '', from: '', to: '', q: '', archived: '' };
   private applied: OrderFilters = {};
 
   constructor(
@@ -40,7 +40,11 @@ export class OrderList implements OnInit {
   }
 
   get filtered(): boolean {
-    return Object.values(this.applied).some(Boolean);
+    return Object.entries(this.applied).some(([key, value]) => key !== 'archived' && Boolean(value));
+  }
+
+  get showingArchived(): boolean {
+    return this.applied.archived === 'true';
   }
 
   ngOnInit(): void {
@@ -58,7 +62,7 @@ export class OrderList implements OnInit {
   }
 
   reset(): void {
-    this.filters = { status: '', from: '', to: '', q: '' };
+    this.filters = { status: '', from: '', to: '', q: '', archived: '' };
     this.applied = {};
     this.load(0);
   }

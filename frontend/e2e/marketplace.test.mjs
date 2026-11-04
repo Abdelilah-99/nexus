@@ -174,4 +174,48 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
     assert.match(await page.$eval('app-analytics-dashboard [role="alert"]', node => node.textContent), /on or after/);
     assert.equal((await apply(placed, placed)).totalAmount, 31);
   });
+  scenario('archive and restore are personal and preserve delivered analytics', async () => {
+    async function archiveFromDetails(account, archived) {
+      const page = account.page;
+      await page.goto(`${baseUrl}/orders/${delivered.id}`, { waitUntil: 'networkidle0' });
+      if (archived) await clickText(page, 'button', 'Archive order');
+      const pending = page.waitForResponse(r => r.url().endsWith(`/orders/${delivered.id}/archive`) && r.request().method() === 'PATCH');
+      await clickText(page, 'button', archived ? 'Yes, archive it' : 'Restore order');
+      assert.equal((await pending).status(), 200);
+      await page.waitForFunction(isArchived => {
+        const text = document.querySelector('section[aria-label="Order visibility"]')?.textContent;
+        return isArchived ? text?.includes('This order is archived') : text?.includes('Archive order');
+      }, {}, archived);
+      const stored = await api(page, `/orders/${delivered.id}`);
+      assert.equal(stored.body.archived, archived);
+    }
+    async function list(account, archived, expected) {
+      const page = account.page;
+      await page.goto(`${baseUrl}/${account === client ? 'orders' : 'seller/orders'}`, { waitUntil: 'networkidle0' });
+      if (archived) {
+        await page.select('#order-visibility', 'true');
+        const pending = page.waitForResponse(r => r.url().includes('/orders/') && new URL(r.url()).searchParams.get('archived') === 'true');
+        await clickText(page, 'button[type="submit"]', 'Apply');
+        assert.equal((await pending).status(), 200);
+      }
+      await page.waitForFunction((id, count) => document.querySelectorAll(`article a[href="/orders/${id}"]`).length === count, {}, delivered.id, expected);
+    }
+    await archiveFromDetails(client, true);
+    await list(client, false, 0);
+    await list(client, true, 1);
+    await list(seller, false, 1);
+    await archiveFromDetails(seller, true);
+    await list(seller, false, 0);
+    await list(seller, true, 1);
+    await list(otherSeller, false, 1);
+    await report(client.page, 'CLIENT', { amount: 31, orders: 1, units: 3 });
+    await report(seller.page, 'SELLER', { amount: 20, orders: 1, units: 2 });
+    assert.equal((await api(stranger.page, `/orders/${delivered.id}/archive`, 'PATCH', { archived: true })).status, 403);
+    await archiveFromDetails(client, false);
+    await list(client, false, 1);
+    await list(client, true, 0);
+    assert.equal((await api(seller.page, `/orders/${delivered.id}`)).body.archived, true);
+    await archiveFromDetails(seller, false);
+  });
+
 });

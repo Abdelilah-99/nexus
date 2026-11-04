@@ -805,3 +805,27 @@ The pipeline matches indexed ownership/date fields and delivered status before u
 `AnalyticsIntegrationTest` uses real MongoDB through Testcontainers to cover decimal sums, status/owner/date exclusions, mixed-seller orders, distinct counts, category fallback, empty results and top-five ordering. `AnalyticsControllerTest` checks authentication, role separation, identity scoping, default dates and invalid ranges. Docker must be available to run integration tests; Testcontainers skips them automatically where Docker is unavailable.
 
 The Angular `AnalyticsDashboard` is embedded in `/profile` and the seller dashboard. It provides date controls, cards, product tables, category bars and monthly charts with readable values, loading/error/retry and empty states. API and component tests cover customer/seller scopes, date validation, cancellation of stale requests and rendering. The display uses the existing order pages' USD convention.
+
+
+## Personal order archive
+
+`PATCH /orders/{id}/archive` takes a required boolean `archived`. True archives,
+false restores; missing/null values return 400. The customer can archive only a
+terminal overall order (DELIVERED, CANCELLED, COMPLETED). A related seller can
+archive only their own terminal fulfillment. Unfinished scopes return 409;
+unrelated accounts return 403; unauthenticated requests return 401 through the
+usual gateway and service identity controls. The caller never supplies an owner ID.
+
+OrderResponse adds `archived` and `archivable`, both specific to the authenticated
+account. Personal `archivedBy` data is stored on the order but is not returned.
+Orders use the existing @Version optimistic lock: concurrent visibility/status
+changes return 409 rather than overwriting each other. Repeating the same desired
+visibility is idempotent and does not save or increment the version again.
+
+GET /orders/my and /orders/seller exclude the caller's archived orders by default.
+`archived=true` selects only their archived orders, preserving date/status/search,
+pagination and filtered total counts. Legacy documents without archivedBy remain
+visible normally. Another customer's/seller's lists are unaffected. Snapshots,
+status history, updatedAt, stock, reorder and analytics are preserved; direct
+order details remain available under the existing ownership rules. No hard delete
+endpoint is introduced.

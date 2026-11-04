@@ -34,6 +34,10 @@ export class OrderService {
     return this.http.post<ReorderResult>(`${this.url}/${encodeURIComponent(id)}/reorder`, {});
   }
 
+  archive(id: string, archived: boolean): Observable<Order> {
+    return this.http.patch<Order>(`${this.url}/${encodeURIComponent(id)}/archive`, { archived });
+  }
+
   updateStatus(id: string, status: OrderStatus, note?: string): Observable<Order> {
     const trimmed = note?.trim();
     return this.http.patch<Order>(

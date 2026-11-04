@@ -24,13 +24,14 @@ import lombok.RequiredArgsConstructor;
 public class OrderSearchRepository {
     private static final String FULFILLMENTS = "fulfillments";
     private static final String STATUS = "status";
+    private static final String ARCHIVED_BY = "archivedBy";
 
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
 
     private final MongoTemplate mongoTemplate;
 
     public Page<Order> findCustomerOrders(String customerId, OrderFilter filter, Pageable pageable) {
-        return find(Criteria.where("customerId").is(customerId), filter, pageable);
+        return find(Criteria.where("customerId").is(customerId), filter, pageable, customerId);
     }
 
     public Page<Order> findSellerOrders(String sellerId, OrderFilter filter, Pageable pageable) {
@@ -52,11 +53,17 @@ public class OrderSearchRepository {
                             .and("productName").regex(Pattern.quote(text), "i"))));
         }
         return find(constraints.size() == 1 ? owner : new Criteria().andOperator(constraints),
-                new OrderFilter(null, filter.from(), filter.to(), null), pageable);
+                new OrderFilter(null, filter.from(), filter.to(), null, filter.archived()), pageable, sellerId);
     }
 
-    private Page<Order> find(Criteria owner, OrderFilter filter, Pageable pageable) {
+    private Criteria archiveVisibility(String userId, OrderFilter filter) {
+        return Boolean.TRUE.equals(filter.archived())
+                ? Criteria.where(ARCHIVED_BY).is(userId) : Criteria.where(ARCHIVED_BY).ne(userId);
+    }
+
+    private Page<Order> find(Criteria owner, OrderFilter filter, Pageable pageable, String viewerId) {
         Query query = buildQuery(owner, filter);
+        query.addCriteria(archiveVisibility(viewerId, filter));
         List<Order> orders = mongoTemplate.find(Query.of(query).with(NEWEST_FIRST).with(pageable), Order.class);
         // The count is skipped when the page alone tells the total (e.g. a first page that is not full)
         return PageableExecutionUtils.getPage(orders, pageable, () -> mongoTemplate.count(query, Order.class));

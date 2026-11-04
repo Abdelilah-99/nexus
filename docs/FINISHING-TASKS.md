@@ -2,7 +2,8 @@
 
 Verified baseline: main a3c5485, 2026-11-03. Search, analytics and checkout PRs are
 merged. GitHub run 41612053898 passed tests, browser scenarios and SonarQube.
-These are proposed owners; coordinate before editing shared files.
+Remaining work follows the Buy02 subject. These are proposed owners; coordinate
+before editing shared files.
 
 ## P0 — Seller-specific order progress (current branch)
 
@@ -29,16 +30,6 @@ Owner: Abdelillah; Ayoub reviews analytics preservation.
 - Keep snapshots and analytics; one user's action must not hide another user's order.
 - Define eligible statuses; test ownership, repeat archive, lists and direct details.
 
-## P1 — Reliable stock recovery
-
-Owners: Anass + Abdelillah; Ayoub reviews Product Service contract.
-
-- Replace log-only failed stock restoration with persisted, retryable recovery work.
-- Make release/reservation operations idempotent before retrying; never restore twice.
-- Cover cancellation, failed order persistence, concurrent checkout and unavailable
-  Product Service, including restart/recovery and duplicate requests.
-- Check ambiguous database/network outcomes before compensating a reservation.
-
 ## P1 — Consistent API errors
 
 Owner: each developer for owned services; agree on the contract together.
@@ -57,8 +48,8 @@ Owners: all three; repository owner for GitHub settings.
   Sonar gates, packaging and staging deployment. Preserve actual run evidence.
 - Test service restarts and discovery convergence. Verify real routed API readiness;
   an unauthenticated 401 alone does not prove that the backend can be reached.
-- Smoke-test staging, verify health checks and demonstrate rollback on a disposable
-  deployment. GitHub Actions success does not establish a successful Jenkins deploy.
+- Smoke-test staging and verify its health checks. Record a successful Jenkins
+  staging deployment separately from GitHub Actions results.
 
 ## P2 — Final validation and documentation
 
@@ -93,8 +84,8 @@ the complete suite passed. Discovery/readiness testing remains tracked above.
 
 Next: review this branch, reproduce the two-seller scenario with a new order,
 then open a PR and require green remote CI before merging. The owners above can
-start archive and stock recovery in separate branches after coordinating the
-shared order contract. No old order statuses or application data were rewritten.
+start archive work after coordinating the shared order contract. No old order
+statuses or application data were rewritten.
 
 
 ## SonarQube feedback on first branch run
@@ -119,5 +110,36 @@ branch in hosted CI before merging.
 
 The next feature to implement is per-user archive/hide for terminal orders,
 keeping purchase snapshots and analytics and enforcing ownership. Coordinate with
-Abdelillah before editing the shared order service. Stock recovery, the API error
-contract, required CI checks and Jenkins staging validation remain open above.
+Abdelillah before editing the shared order service. The API error contract, required
+CI checks and Jenkins staging validation remain open above.
+
+
+## Order archive implementation — feat/order-archive
+
+Finished orders can now be hidden/restored per account through PATCH
+/orders/{id}/archive with an explicit archived boolean. Customers need a terminal
+overall order; sellers need only their own terminal fulfillment. Default lists
+exclude personally archived orders; archived=true lists them with existing filters
+and pagination. Order details/reorder remain available under ownership checks.
+Snapshots, fulfillment history, stock, timestamps and analytics are preserved.
+Optimistic version checks prevent lost concurrent visibility/status changes.
+
+Local validation: 223 order tests passed against disposable MongoDB (zero skipped),
+214 Angular tests and coverage thresholds passed, and the production build passed.
+Archive regressions cover invalid/missing input, authentication/ownership, active
+order rejection, repeated requests, restoring personal visibility, independent
+seller progress, analytics and unchanged stock. All six browser scenarios passed, including
+archive and restore through the real customer/seller UI and unchanged analytics.
+Remote CI and SonarQube must also pass before merging.
+
+After review/merge, the next remaining code task is consistent API errors.
+Required merge checks and the Jenkins staging pipeline remain shared delivery
+tasks. Old incorrectly delivered orders still
+require the separately documented manual audit.
+
+
+Archive branch CI follow-up: run 41822412779 first stopped before browser tests
+because its media MongoDB container failed during initialization. The unchanged
+rerun passed all six browser scenarios and all functional tests. Sonar then
+reported two java:S8924 test static-import findings (verify/never); the follow-up
+uses the existing Mockito static-import style, with no changed assertions or gates.

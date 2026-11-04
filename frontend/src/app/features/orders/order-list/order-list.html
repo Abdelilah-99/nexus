@@ -26,6 +26,13 @@
         <label for="order-to" class="form-label">To</label>
         <input id="order-to" name="to" type="date" class="form-control" [(ngModel)]="filters.to" [disabled]="busy()">
       </div>
+      <div class="col-12 col-md-3">
+        <label for="order-visibility" class="form-label">View</label>
+        <select id="order-visibility" name="archived" class="form-select" [(ngModel)]="filters.archived" [disabled]="busy()">
+          <option value="">Current orders</option>
+          <option value="true">Archived orders</option>
+        </select>
+      </div>
       <div class="col-6 col-md-2 d-flex gap-2">
         <button type="submit" class="btn btn-primary flex-fill" [disabled]="busy()">Apply</button>
         <button type="button" class="btn btn-outline-secondary" (click)="reset()" [disabled]="busy()">Reset</button>
@@ -38,14 +45,14 @@
 
   <ng-container *ngIf="result() as page">
     <p *ngIf="!page.content.length && !busy()">
-      {{ filtered ? 'No orders match these filters.' : seller ? 'No orders contain your products yet.' : 'You have not placed any orders yet.' }}
+      {{ filtered ? 'No orders match these filters.' : showingArchived ? 'You have no archived orders.' : seller ? 'No orders contain your products yet.' : 'You have not placed any orders yet.' }}
     </p>
 
     <article *ngFor="let order of page.content" class="buy-card p-3 mb-3">
       <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
           <h2 class="h5 mb-1">Order #{{ shortId(order.id) }}</h2>
-          <p class="text-muted small mb-0">Placed {{ order.createdAt | date: 'medium' }}</p>
+          <p class="text-muted small mb-0"><span *ngIf="order.archived">Archived · </span>Placed {{ order.createdAt | date: 'medium' }}</p>
         </div>
         <span [class]="statusBadge(order.status)">{{ statusLabel(order.status) }}</span>
       </div>

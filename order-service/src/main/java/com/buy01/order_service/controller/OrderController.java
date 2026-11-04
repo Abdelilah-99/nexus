@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.buy01.order_service.dtos.req.CreateOrderRequest;
+import com.buy01.order_service.dtos.req.ArchiveOrderRequest;
 import com.buy01.order_service.dtos.req.OrderFilter;
 import com.buy01.order_service.dtos.req.PageParams;
 import com.buy01.order_service.dtos.req.UpdateOrderStatusRequest;
@@ -87,5 +88,11 @@ public class OrderController {
             @Valid @RequestBody UpdateOrderStatusRequest request,
             @CurrentUser AuthenticatedUser user) {
         return ResponseEntity.ok(orderService.updateStatus(id, request, user));
+    }
+
+    @PatchMapping("/{id}/archive")
+    public ResponseEntity<OrderResponse> archive(@PathVariable String id,
+            @Valid @RequestBody ArchiveOrderRequest request, @CurrentUser AuthenticatedUser user) {
+        return ResponseEntity.ok(orderService.archive(id, request.archived(), user));
     }
 }
