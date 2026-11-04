@@ -8,14 +8,16 @@ public enum OrderStatus {
     CONFIRMED,
     SHIPPED,
     DELIVERED,
-    CANCELLED;
+    CANCELLED,
+    IN_PROGRESS,
+    COMPLETED;
 
     public Set<OrderStatus> allowedNext() {
         return switch (this) {
             case PENDING -> EnumSet.of(CONFIRMED, CANCELLED);
             case CONFIRMED -> EnumSet.of(SHIPPED, CANCELLED);
             case SHIPPED -> EnumSet.of(DELIVERED);
-            case DELIVERED, CANCELLED -> EnumSet.noneOf(OrderStatus.class);
+            case DELIVERED, CANCELLED, IN_PROGRESS, COMPLETED -> EnumSet.noneOf(OrderStatus.class);
         };
     }
 

@@ -112,6 +112,22 @@ class AnalyticsIntegrationTest {
         assertThat(result.orderCount()).isEqualTo(7);
     }
 
+    @Test
+    void explicitFulfillmentOverridesLegacyOverallStatusForEachLine() {
+        save("mixed", "c1", "2026-01-15T00:00:00Z", OrderStatus.DELIVERED,
+                item("mine", "s1", "books", 2, "10.00"), item("theirs", "s2", "audio", 5, "100.00"));
+        var order = mongo.findById("mixed", Order.class);
+        order.setFulfillments(List.of(
+                new com.buy01.order_service.models.SellerFulfillment("s1", OrderStatus.DELIVERED, List.of()),
+                new com.buy01.order_service.models.SellerFulfillment("s2", OrderStatus.PENDING, List.of())));
+        mongo.save(order);
+        assertThat(analytics.summarize("c1", false, FROM, TO).totalAmount()).isEqualByComparingTo("20.00");
+        assertThat(analytics.summarize("s2", true, FROM, TO).orderCount()).isZero();
+        order.setStatus(OrderStatus.IN_PROGRESS);
+        mongo.save(order);
+        assertThat(analytics.summarize("s1", true, FROM, TO).totalAmount()).isEqualByComparingTo("20.00");
+    }
+
     private void save(String id, String customer, String created, OrderStatus status, OrderItem... items) {
         mongo.insert(Order.builder().id(id).idempotencyKey(id).customerId(customer).status(status)
                 .createdAt(Instant.parse(created)).items(List.of(items))

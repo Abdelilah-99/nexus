@@ -44,6 +44,8 @@ public class Order {
 
     private List<String> sellerIds;
 
+    private List<SellerFulfillment> fulfillments;
+
     private ShippingAddress shippingAddress;
 
     private PaymentMethod paymentMethod;

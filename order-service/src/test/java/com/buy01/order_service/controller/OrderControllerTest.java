@@ -421,7 +421,7 @@ class OrderControllerTest {
         var address = new ShippingAddressDto("Jane Doe", "0600000000", "1 Main St", "Casablanca", "20000", "Morocco");
         return new OrderResponse(ORDER_ID, CUSTOMER_ID, status, List.of(item), address,
                 PaymentMethod.CASH_ON_DELIVERY, 2, new BigDecimal("40.00"),
-                List.of(new StatusChangeResponse(OrderStatus.PENDING, now, CUSTOMER_ID, null)), now, now);
+                List.of(new StatusChangeResponse(OrderStatus.PENDING, now, CUSTOMER_ID, null)), now, now, List.of(), false);
     }
 
     private static PageResponse<OrderResponse> page(OrderResponse... orders) {

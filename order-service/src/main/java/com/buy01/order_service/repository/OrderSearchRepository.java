@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 @Repository
 @RequiredArgsConstructor
 public class OrderSearchRepository {
+    private static final String FULFILLMENTS = "fulfillments";
+    private static final String STATUS = "status";
 
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
 
@@ -32,7 +34,25 @@ public class OrderSearchRepository {
     }
 
     public Page<Order> findSellerOrders(String sellerId, OrderFilter filter, Pageable pageable) {
-        return find(Criteria.where("sellerIds").is(sellerId), filter, pageable);
+        Criteria owner = Criteria.where("sellerIds").is(sellerId);
+        List<Criteria> constraints = new ArrayList<>();
+        constraints.add(owner);
+        if (filter.status() != null) {
+            constraints.add(new Criteria().orOperator(
+                    Criteria.where(FULFILLMENTS).elemMatch(Criteria.where("sellerId").is(sellerId)
+                            .and(STATUS).is(filter.status())),
+                    new Criteria().andOperator(new Criteria().orOperator(
+                            Criteria.where(FULFILLMENTS).exists(false), Criteria.where(FULFILLMENTS).is(null),
+                            Criteria.where(FULFILLMENTS).size(0)), Criteria.where(STATUS).is(filter.status()))));
+        }
+        if (filter.q() != null && !filter.q().isBlank()) {
+            String text = filter.q().trim();
+            constraints.add(new Criteria().orOperator(Criteria.where("id").is(text),
+                    Criteria.where("items").elemMatch(Criteria.where("sellerId").is(sellerId)
+                            .and("productName").regex(Pattern.quote(text), "i"))));
+        }
+        return find(constraints.size() == 1 ? owner : new Criteria().andOperator(constraints),
+                new OrderFilter(null, filter.from(), filter.to(), null), pageable);
     }
 
     private Page<Order> find(Criteria owner, OrderFilter filter, Pageable pageable) {
@@ -47,7 +67,7 @@ public class OrderSearchRepository {
         criteria.add(owner);
 
         if (filter.status() != null) {
-            criteria.add(Criteria.where("status").is(filter.status()));
+            criteria.add(Criteria.where(STATUS).is(filter.status()));
         }
         if (filter.from() != null || filter.to() != null) {
             Criteria createdAt = Criteria.where("createdAt");

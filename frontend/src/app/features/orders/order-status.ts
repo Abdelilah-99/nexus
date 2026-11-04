@@ -6,6 +6,8 @@ const LABELS: Record<OrderStatus, string> = {
   SHIPPED: 'Shipped',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
+  IN_PROGRESS: 'In progress',
+  COMPLETED: 'Completed with cancellations',
 };
 
 const BADGES: Record<OrderStatus, string> = {
@@ -14,6 +16,8 @@ const BADGES: Record<OrderStatus, string> = {
   SHIPPED: 'buy-badge-warning',
   DELIVERED: 'buy-badge-success',
   CANCELLED: 'buy-badge-danger',
+  IN_PROGRESS: 'buy-badge-warning',
+  COMPLETED: 'buy-badge-success',
 };
 
 export function statusLabel(status: OrderStatus): string {

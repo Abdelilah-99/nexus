@@ -72,22 +72,37 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
     await report(seller.page, 'SELLER', { amount: 0, orders: 0, units: 0 }, '/seller/dashboard');
   });
 
-  scenario('seller status changes produce customer totals and isolate each seller in a mixed order', async () => {
-    assert.ok(delivered, 'Checkout scenario must produce an order');
-    await seller.page.goto(`${baseUrl}/orders/${delivered.id}`, { waitUntil: 'networkidle0' });
+  async function advanceSeller(page, id) {
+    await page.goto(`${baseUrl}/orders/${id}`, { waitUntil: 'networkidle0' });
     for (const status of ['CONFIRMED', 'SHIPPED', 'DELIVERED']) {
-      await seller.page.select('#next-status', status);
-      const pending = seller.page.waitForResponse(r => r.url().endsWith(`/orders/${delivered.id}/status`) && r.request().method() === 'PATCH');
-      await clickText(seller.page, 'button[type="submit"]', 'Update status');
+      await page.select('#next-status', status);
+      const pending = page.waitForResponse(r => r.url().endsWith(`/orders/${id}/status`) && r.request().method() === 'PATCH');
+      await clickText(page, 'button[type="submit"]', 'Update status');
       const response = await pending;
       assert.equal(response.status(), 200);
-      const stored = await api(seller.page, `/orders/${delivered.id}`);
+      const stored = await api(page, `/orders/${id}`);
       assert.equal(stored.status, 200);
       assert.equal(stored.body.status, status);
-      await seller.page.waitForFunction(label => document.querySelector('main header')?.textContent.includes(label), {},
+      await page.waitForFunction(label => document.querySelector('main header')?.textContent.includes(label), {},
         status[0] + status.slice(1).toLowerCase());
-      await seller.page.waitForFunction(() => !document.querySelector('#next-status')?.disabled);
+      await page.waitForFunction(() => !document.querySelector('#next-status')?.disabled);
     }
+  }
+
+  scenario('seller status changes produce customer totals and isolate each seller in a mixed order', async () => {
+    assert.ok(delivered, 'Checkout scenario must produce an order');
+    await advanceSeller(seller.page, delivered.id);
+    const partial = await api(client.page, `/orders/${delivered.id}`);
+    assert.equal(partial.body.status, 'IN_PROGRESS');
+    assert.deepEqual(partial.body.fulfillments.map(part => part.status), ['DELIVERED', 'PENDING']);
+    await client.page.goto(`${baseUrl}/orders/${delivered.id}`, { waitUntil: 'networkidle0' });
+    assert.match(await client.page.$eval('main header', el => el.textContent), /In progress/);
+    assert.match(await client.page.$eval('tbody', el => el.textContent), /Delivered/);
+    assert.match(await client.page.$eval('tbody', el => el.textContent), /Pending/);
+    await report(client.page, 'CLIENT', { amount: 20, orders: 1, units: 2 });
+    await report(otherSeller.page, 'SELLER', { amount: 0, orders: 0, units: 0 });
+    await advanceSeller(otherSeller.page, delivered.id);
+    assert.equal((await api(client.page, `/orders/${delivered.id}`)).body.status, 'DELIVERED');
     const customer = await report(client.page, 'CLIENT', { amount: 31, orders: 1, units: 3 });
     assert.equal(customer.products.length, 2);
     assert.equal(customer.months.reduce((total, month) => total + month.amount, 0), 31);

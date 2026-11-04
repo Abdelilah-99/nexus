@@ -323,6 +323,22 @@ One document per completed checkout, id = SHA-256 of `userId:idempotencyKey`. It
 
 ## 6. Order lifecycle
 
+Each seller's `fulfillments` entry has its own status and history. The following
+transitions apply to a seller's own items only. Customer responses include every
+fulfillment; seller responses include only the authenticated seller's part.
+Customer overall status is the common status when every part agrees, `IN_PROGRESS`
+when statuses differ, or `COMPLETED` when all parts have finished with a mixture of
+deliveries and cancellations. Only all-delivered orders are `DELIVERED`.
+
+`cancellable` is computed by the server: a customer can cancel all remaining parts
+only before any part ships. Seller cancellation restores only that seller's stock;
+customer cancellation never restores stock from an already cancelled part twice.
+Seller list status and keyword filters apply to that seller's part and products.
+
+Legacy documents without fulfillments use their historical overall status until
+updated; no delivery evidence is fabricated. Audit old incorrectly delivered mixed
+orders manually with both sellers before correcting their records.
+
 ```
              ┌─────────┐     ┌───────────┐     ┌─────────┐     ┌───────────┐
  placed ───► │ PENDING │ ──► │ CONFIRMED │ ──► │ SHIPPED │ ──► │ DELIVERED │  final
@@ -748,7 +764,7 @@ Analytics are implemented in the Order Service, which owns the source collection
 
 ### Financial and date rules
 
-- Only `DELIVERED` orders contribute to **all** amounts, order counts, unit counts, rankings and trends. Cancelled, pending, confirmed and shipped orders are excluded. This is the implementation's Pay on Delivery revenue policy, subject to team review; there is no payment ledger.
+- Only lines in `DELIVERED` seller fulfillments contribute to **all** amounts, order counts, unit counts, rankings and trends. Cancelled, pending, confirmed and shipped seller lines are excluded. Distinct order counts include an order with at least one delivered line in the requested scope. This is the implementation's Pay on Delivery revenue policy, subject to team review; there is no payment ledger.
 - Filters use `createdAt` (placement date) in UTC, not delivery date. `from`/`to` are inclusive ISO dates.
 - Default: first day of the month 11 months before today through today. Either date can be omitted: `to` defaults to today; `from` defaults relative to the effective end date.
 - Ranges may include at most 366 days and must stay between years 1970 and 9998. Invalid dates/ranges return 400. Unauthenticated requests return 401; wrong roles return 403.

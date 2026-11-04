@@ -31,6 +31,7 @@ import com.buy01.order_service.models.OrderItem;
 import com.buy01.order_service.models.OrderStatus;
 import com.buy01.order_service.models.PaymentMethod;
 import com.buy01.order_service.models.StatusChange;
+import com.buy01.order_service.models.SellerFulfillment;
 import com.buy01.order_service.repository.OrderRepository;
 import com.buy01.order_service.repository.OrderSearchRepository;
 import com.buy01.order_service.security.AuthenticatedUser;
@@ -89,6 +90,7 @@ public class OrderServiceImpl implements OrderService {
                 .updatedAt(now)
                 .build();
 
+        order.setFulfillments(OrderProgress.parts(order));
         productClient.reserveStock(items);
         try {
             return orderMapper.toResponse(orderRepository.insert(order));
@@ -139,10 +141,18 @@ public class OrderServiceImpl implements OrderService {
         if (!order.isPlacedBy(user.userId())) {
             throw new ForbiddenException("Only the customer who placed the order can cancel it");
         }
-        changeStatus(order, OrderStatus.CANCELLED, user, "Cancelled by customer");
+        List<SellerFulfillment> parts = OrderProgress.parts(order);
+        if (!OrderProgress.cancellable(parts)) {
+            throw new ConflictException("Cannot change order status from " + order.getStatus() + " to CANCELLED");
+        }
+        List<String> cancelling = parts.stream().filter(part -> part.status() != OrderStatus.CANCELLED)
+                .map(SellerFulfillment::sellerId).toList();
+        order.setFulfillments(parts.stream().map(part -> cancelling.contains(part.sellerId())
+                ? advance(part, OrderStatus.CANCELLED, user, "Cancelled by customer") : part).toList());
+        updateOverall(order, user, "Cancelled by customer");
         Order cancelled = orderRepository.save(order);
-        // Only after the save: if it fails (e.g. a concurrent update), the order still holds the stock
-        releaseStock(cancelled.getItems(), "order " + cancelled.getId() + " cancelled by customer");
+        releaseStock(cancelled.getItems().stream().filter(item -> cancelling.contains(item.sellerId())).toList(),
+                "order " + cancelled.getId() + " cancelled by customer");
         return orderMapper.toResponse(cancelled);
     }
 
@@ -161,24 +171,36 @@ public class OrderServiceImpl implements OrderService {
         if (!isSellerOf(order, user)) {
             throw new ForbiddenException("Only a seller with products in this order can update its status");
         }
-        changeStatus(order, request.status(), user, request.note());
+        List<SellerFulfillment> parts = OrderProgress.parts(order);
+        order.setFulfillments(parts.stream().map(part -> user.userId().equals(part.sellerId())
+                ? advance(part, request.status(), user, request.note()) : part).toList());
+        updateOverall(order, user, "Seller delivery progress updated");
         Order updated = orderRepository.save(order);
-        if (updated.getStatus() == OrderStatus.CANCELLED) {
-            releaseStock(updated.getItems(), "order " + updated.getId() + " cancelled by seller");
+        if (request.status() == OrderStatus.CANCELLED) {
+            releaseStock(updated.getItems().stream().filter(item -> user.userId().equals(item.sellerId())).toList(),
+                    "order " + updated.getId() + " cancelled by seller " + user.userId());
         }
         return orderMapper.toSellerResponse(updated, user.userId());
     }
 
-    private void changeStatus(Order order, OrderStatus next, AuthenticatedUser user, String note) {
-        OrderStatus current = order.getStatus();
-        if (!current.canTransitionTo(next)) {
-            throw new ConflictException("Cannot change order status from " + current + " to " + next);
+    private SellerFulfillment advance(SellerFulfillment part, OrderStatus next, AuthenticatedUser user, String note) {
+        if (!part.status().canTransitionTo(next)) {
+            throw new ConflictException("Cannot change order status from " + part.status() + " to " + next);
         }
+        List<StatusChange> history = new ArrayList<>(part.statusHistory());
+        history.add(new StatusChange(next, clock.instant(), user.userId(), note));
+        return new SellerFulfillment(part.sellerId(), next, history);
+    }
+
+    private void updateOverall(Order order, AuthenticatedUser user, String note) {
+        OrderStatus next = OrderProgress.overall(order.getFulfillments());
         Instant now = clock.instant();
-        List<StatusChange> history = new ArrayList<>(order.getStatusHistory());
-        history.add(new StatusChange(next, now, user.userId(), note));
+        if (order.getStatus() != next) {
+            List<StatusChange> history = new ArrayList<>(order.getStatusHistory());
+            history.add(new StatusChange(next, now, user.userId(), note));
+            order.setStatusHistory(history);
+        }
         order.setStatus(next);
-        order.setStatusHistory(history);
         order.setUpdatedAt(now);
     }
 
