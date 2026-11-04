@@ -42,7 +42,8 @@ export async function openAccount(browser, role, label) {
   page.setDefaultTimeout(20000);
   await page.setViewport({ width: 1280, height: 900 });
   const email = `e2e-${runId}-${label}@buy02.local`;
-  emails.push(email);
+  // Registration normalizes email to lowercase before persisting it.
+  emails.push(email.toLowerCase());
   await page.goto(`${baseUrl}/register`, { waitUntil: 'networkidle0' });
   await page.locator('#regFullName').fill(`E2E ${label}`);
   await page.locator('#regEmail').fill(email);
@@ -90,7 +91,9 @@ export function cleanup() {
         throw new Error('Order fixtures remain after cleanup');
       }`],
     ['product', `target.products.deleteMany({_id: {$in: ${JSON.stringify(productIds)}}});`],
-    ['user', `target.users.deleteMany({email: {$in: ${JSON.stringify(emails)}}});`]
+    ['user', `const emails = ${JSON.stringify(emails)};
+      target.users.deleteMany({email: {$in: emails}});
+      if (target.users.countDocuments({email: {$in: emails}})) throw new Error('User fixtures remain after cleanup');`]
   ]) {
     try { mongo(service, operation); } catch { failures.push(service); }
   }

@@ -97,3 +97,8 @@ old staging logs are not evidence that it has already been deployed.
 Browser audit helpers were temporary copies outside Git with the staging project
 guard preserved. Fixtures used random account/product IDs and cleanup targeted
 only those IDs. Existing accounts, products, orders and volumes were preserved.
+
+The final fixture check found that registration lowercases emails while the old
+browser helper cleaned up mixed-case emails. The helper now normalizes them and
+verifies removal. This audit's exact generated IDs/emails were identified and
+removed; unrelated accounts were preserved.
