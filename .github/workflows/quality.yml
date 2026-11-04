@@ -76,7 +76,7 @@ jobs:
           password=$(openssl rand -hex 24)
           echo "::add-mask::$password"
           echo "SONAR_CI_DB_PASSWORD=$password" >> "$GITHUB_ENV"
-          SONAR_CI_DB_PASSWORD="$password" docker compose -p buy01-quality -f .ci/compose.sonar.yml up -d --wait --wait-timeout 900
+          SONAR_CI_DB_PASSWORD="$password" python3 .ci/start_sonar.py
       - name: Install pinned SonarScanner CLI
         run: |
           curl -fsSLo "$RUNNER_TEMP/scanner.zip" https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-7.2.0.5079.zip

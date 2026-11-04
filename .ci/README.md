@@ -4,6 +4,14 @@ GitHub Actions runs `Code quality / Tests and SonarQube gates` on every branch p
 
 Community Build does not offer native PR decoration or branch analysis. Each Actions run therefore scans all seven projects in its own isolated Docker SonarQube server. PR runs scan GitHub's proposed merge commit; branch pushes scan the pushed commit. No PR scan can overwrite the persistent `main` dashboard. This is whole-code validation, not native PR differential analysis. After each run the temporary server is removed. Its metrics, issues, gate results, JaCoCo reports, and frontend HTML/LCOV reports remain in the `quality-<run>-<attempt>` artifact for 30 days. A table is visible in the Actions job summary.
 
+The disposable server starts through `.ci/start_sonar.py`. If startup fails,
+the helper captures Compose status, recent SonarQube/PostgreSQL logs, container
+state (including health results), host memory and Docker disk usage before the
+workflow removes containers. It preserves the original failure code and redacts
+`SONAR_CI_DB_PASSWORD` from console output and `reports/quality/sonar-startup.log`.
+The existing always-uploaded quality artifact includes that report. Startup is
+not retried automatically; inspect the evidence before changing runtime settings.
+
 The persistent SonarQube dashboard at http://localhost:9000 retains Jenkins `main` analysis history. Jenkins has a nightly scan trigger too; timer-triggered runs skip deployment. Coverage reports are archived on every Jenkins build.
 
 `Buy01 Quality Gate` preserves Sonar way's new-code rules: zero new issues, at least 80% new-code coverage, at most 3% new-code duplication, and 100% reviewed new security hotspots. It additionally requires zero bugs, vulnerabilities, and code smells and at least 80% coverage across the whole project. The small-change coverage bypass is disabled. Backend coverage is enforced on both all code and new code. Frontend coverage also requires at least 80% statements, branches, functions, and lines across all application TypeScript files, including files not imported by tests. HTML templates are checked by SonarQube's HTML profile; compiled template counters are not included in the TypeScript coverage percentage.
