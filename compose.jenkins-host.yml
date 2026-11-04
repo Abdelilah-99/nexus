@@ -1,0 +1,64 @@
+# Application overlay for Jenkins using the host Docker daemon.
+# Pipeline prepares the dedicated certificate volume before deployment.
+services:
+  product-mongodb:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-product-mongodb
+    volumes:
+      - type: volume
+        source: staging_mongo_init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+  media-mongodb:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-media-mongodb
+    volumes:
+      - type: volume
+        source: staging_mongo_init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+  user-mongodb:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-user-mongodb
+    volumes:
+      - type: volume
+        source: staging_mongo_init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+  order-mongodb:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-order-mongodb
+    volumes:
+      - type: volume
+        source: staging_mongo_init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+  kafka:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-kafka
+  discovery:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-discovery
+  gateway:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-gateway
+    volumes:
+      - type: volume
+        source: staging_certs
+        target: /run/secrets
+        read_only: true
+  user-service:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-user-service
+  product-service:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-product-service
+  media-service:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-media-service
+  order-service:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-order-service
+  frontend:
+    container_name: ${DEPLOY_PROJECT:-buy02-staging}-frontend
+    volumes:
+      - type: volume
+        source: staging_certs
+        target: /etc/nginx/certs
+        read_only: true
+volumes:
+  staging_certs:
+    external: true
+    name: ${DEPLOY_CERT_VOLUME:?Set DEPLOY_CERT_VOLUME}
+  staging_mongo_init:
+    external: true
+    name: ${DEPLOY_MONGO_INIT_VOLUME:?Set DEPLOY_MONGO_INIT_VOLUME}

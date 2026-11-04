@@ -1,11 +1,25 @@
 # Buy02 finishing tasks
 
-Verified baseline: main a3c5485, 2026-11-03. Search, analytics and checkout PRs are
-merged. GitHub run 41612053898 passed tests, browser scenarios and SonarQube.
-Remaining work follows the Buy02 subject. These are proposed owners; coordinate
-before editing shared files.
+Current baseline: main c9ca7ed, 2026-11-04. Seller fulfillment (PR #21),
+order archive (PR #23), consistent errors (PR #24), and required main CI (PR #25)
+are merged. The sections below retain their acceptance criteria and dated history.
 
-## P0 — Seller-specific order progress (current branch)
+Current work: `feat/jenkins-host-staging` prepares Jenkins for this rootless Docker
+host. Jenkins is healthy on 8085; seven Sonar credentials/analysis permissions and
+the candidate Jenkinsfile were verified live. Gateway tests and checkout integration
+tests inside Jenkins passed. The README documents the launcher and staging on 4300.
+
+Next required steps:
+
+1. Review and merge this infrastructure PR with green required CI.
+2. Run `first-pipeline` manually against merged main; verify tests, all seven gates,
+   images, staging deployment and health checks actually run. Save run evidence.
+3. Smoke-test staging, service restart/discovery recovery and the team cases below.
+   Finish responsive UI/manual acceptance and final demonstration evidence.
+
+A completed controller setup does not establish a successful staging deployment.
+
+## Completed — Seller-specific order progress
 
 Owner: Abdelillah (orders), Ayoub (analytics), Anass (checkout regression).
 
@@ -22,7 +36,7 @@ Owner: Abdelillah (orders), Ayoub (analytics), Anass (checkout regression).
 - Required regression: two sellers, first delivered, second pending; inspect both
   seller pages, client page, analytics, status filters, cancellation and stock.
 
-## P1 — Order archive/removal
+## Completed — Order archive/removal
 
 Owner: Abdelillah; Ayoub reviews analytics preservation.
 
@@ -30,7 +44,7 @@ Owner: Abdelillah; Ayoub reviews analytics preservation.
 - Keep snapshots and analytics; one user's action must not hide another user's order.
 - Define eligible statuses; test ownership, repeat archive, lists and direct details.
 
-## P1 — Consistent API errors
+## Completed — Consistent API errors
 
 Owner: each developer for owned services; agree on the contract together.
 
@@ -44,7 +58,7 @@ Owners: all three; repository owner for GitHub settings.
 
 - Completed 2026-11-04: main requires Tests and SonarQube gates from GitHub
   Actions and an up-to-date branch, alongside its existing review requirement.
-- Repair/verify Jenkins Docker-in-Docker startup, then run build, tests, all seven
+- Verify Jenkins using the host-daemon profile on rootless hosts, then run build, tests, all seven
   Sonar gates, packaging and staging deployment. Preserve actual run evidence.
 - Test service restarts and discovery convergence. Verify real routed API readiness;
   an unauthenticated 401 alone does not prove that the backend can be reached.

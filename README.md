@@ -84,7 +84,7 @@ flowchart TD
     Health -->|No| Rollback[Attempt rollback to previous healthy release]
 ```
 
-The application runs inside the `jenkins-docker` Docker daemon. The host's normal `docker ps` shows infrastructure containers; use `docker exec jenkins-docker docker ps` to inspect deployed application containers.
+The classic lab runs the application inside `jenkins-docker`; use `docker exec jenkins-docker docker ps` to inspect it. The host-daemon alternative below runs separate `buy02-staging-*` containers visible in the host's `docker ps`.
 
 ## Requirements
 
@@ -160,7 +160,7 @@ Edit these two files **before starting the application**:
 
 Generate a JWT secret with `openssl rand -hex 32`. Keep all local secrets out of Git. The `buy01-env` file must contain valid shell `KEY=value` lines; quote values containing shell-special characters.
 
-Create the Jenkins admin password and GitHub checkout credentials using hidden prompts:
+Create the Jenkins admin password using a hidden prompt. GitHub username/token prompts below are needed only for a private repository; this public repository supports anonymous checkout:
 
 ```bash
 read -rsp 'Jenkins admin password: ' value; echo
@@ -178,7 +178,7 @@ unset value
 
 If you already cloned the repository, start with `umask 077` from your checkout instead of cloning again.
 
-The Jenkins job checks out `main` from the repository configured in `jenkins-lab/jcasc/jenkins.yaml`. Set that URL to the repository you intend to deploy (for this checkout, `https://github.com/AyyoubMh48/buy-02.git`), and ensure the GitHub token can read it. Push changes before running the job: local, uncommitted edits are not included. Testing a feature branch requires configuring the job to check out that branch; the default job builds `main`.
+The Jenkins job checks out `main` from the repository configured in `jenkins-lab/jcasc/jenkins.yaml`. Set that URL to the repository you intend to deploy (for this checkout, `https://github.com/AyyoubMh48/buy-02.git`), and supply a GitHub token with read access if that repository is private. Push changes before running the job: local, uncommitted edits are not included. Testing a feature branch requires configuring the job to check out that branch; the default job builds `main`.
 
 ### 2. Generate local HTTPS certificates
 
@@ -241,6 +241,30 @@ The bootstrap prepares **seven SonarQube projects**, their analysis tokens, and 
 
 ### 5. Start Jenkins
 
+Choose the host-daemon setup on rootless Docker (including this development machine).
+It reuses the existing Jenkins home and SonarQube network, preserves the local app on
+4200, and reserves **4300** for staging. Run it after provisioning the seven tokens:
+
+```bash
+scripts/run-jenkins-host.sh
+```
+
+The launcher discovers the local Docker Unix socket and the host's routable IPv4
+address. Set `JENKINS_TEST_HOST=<host-ip>` if automatic routing chooses the wrong
+interface. Its private settings go in `.local/jenkins-host.env`. The entrypoint adds
+Jenkins to the socket's mapped group; it does not change host socket permissions.
+Access to this daemon lets Jenkins control host containers, so use trusted builds.
+Do not run this profile and the classic controller together.
+
+The host profile sets `COMPOSE_FILE=docker-compose.yml:compose.jenkins-host.yml`,
+`DEPLOY_PROJECT=buy02-staging`, separate database/Kafka/gateway ports, and a CORS
+allowlist for localhost:4300. Deployment copies certificates and MongoDB init scripts
+through Docker into dedicated named volumes, because controller paths are not host
+paths. Database volumes remain scoped to the staging project. Use `docker ps` to
+inspect `buy02-staging-*` containers after deployment.
+
+For a host supporting privileged Docker-in-Docker, use the classic setup instead:
+
 ```bash
 docker compose -f jenkins-lab/compose.yml up -d --build --wait --wait-timeout 900 docker jenkins
 docker compose -f jenkins-lab/compose.yml ps
@@ -256,7 +280,7 @@ Open **http://localhost:8085**, sign in as `admin` using the password from step 
 
 ### 6. Run the pipeline
 
-In Jenkins, open **`first-pipeline` → Build Now → Console Output**.
+Merge the infrastructure PR into `main` after review and green CI before starting this job; Jenkins checks out the remote `main` Jenkinsfile. In Jenkins, open **`first-pipeline` → Build Now → Console Output**. A scheduled run skips deployment; use **Build Now** to validate staging.
 
 The expected sequence is:
 
@@ -267,13 +291,13 @@ The expected sequence is:
 5. Only if all gates pass, build Docker images tagged with the Jenkins build number.
 6. Deploy the application, check health, and attempt rollback when an eligible previous release exists and deployment health fails.
 
-A green Jenkins result is meaningful only if the deployment and health-check stages ran as expected. **This setup builds images locally inside Docker-in-Docker; it does not push images to Docker Hub.**
+A green Jenkins result is meaningful only if the deployment and health-check stages ran as expected. Images are built in the selected Docker daemon; this pipeline does not push them to Docker Hub. Email notifications are disabled unless `CI_NOTIFY_EMAIL` is explicitly configured.
 
 ### 7. Open and test the marketplace
 
 | Service | URL |
 | --- | --- |
-| Marketplace | **https://localhost:4200** |
+| Marketplace | **https://localhost:4300** (host-daemon staging), **https://localhost:4200** (classic lab or local checkout) |
 | Jenkins | http://localhost:8085 |
 | SonarQube | http://localhost:9000 |
 

@@ -24,4 +24,17 @@ class CorsConfigTest {
         assertThat(config.checkHeaders(java.util.List.of("X-User-Id"))).isNull();
         assertThat(config.checkHeaders(java.util.List.of("X-User-Roles"))).isNull();
     }
+    @Test
+    void stagingOriginsCanBeConfiguredWithoutAllowingOtherSites() {
+        SecurityConfig security = new SecurityConfig(mock(JwtAuthenticationFilter.class));
+        org.springframework.test.util.ReflectionTestUtils.setField(security, "allowedOrigins",
+                " https://localhost:4300, http://localhost:4300, ");
+        CorsConfiguration staging = security.corsConfigurationSource()
+                .getCorsConfiguration(new MockHttpServletRequest("POST", "/orders"));
+        assertThat(staging.checkOrigin("https://localhost:4300")).isEqualTo("https://localhost:4300");
+        assertThat(staging.checkOrigin("http://localhost:4300")).isEqualTo("http://localhost:4300");
+        assertThat(staging.checkOrigin("https://localhost:4200")).isNull();
+        assertThat(staging.checkOrigin("https://example.com")).isNull();
+        assertThat(staging.getAllowCredentials()).isTrue();
+    }
 }

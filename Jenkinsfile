@@ -28,7 +28,7 @@ pipeline {
         stage('Product Service Tests') {
             steps {
                 dir('product-service') {
-                    sh './mvnw -B clean test'
+                    sh 'bash ./mvnw -B clean test'
                 }
             }
         }
@@ -36,7 +36,7 @@ pipeline {
         stage('User Service Tests') {
             steps {
                 dir('user-service') {
-                    sh './mvnw -B clean test'
+                    sh 'bash ./mvnw -B clean test'
                 }
             }
         }
@@ -44,7 +44,7 @@ pipeline {
         stage('Media Service Tests') {
             steps {
                 dir('media-service') {
-                    sh './mvnw -B clean test'
+                    sh 'bash ./mvnw -B clean test'
                 }
             }
         }
@@ -52,7 +52,7 @@ pipeline {
         stage('Order Service Tests') {
             steps {
                 dir('order-service') {
-                    sh './mvnw -B clean test'
+                    sh 'bash ./mvnw -B clean test'
                 }
             }
         }
@@ -71,7 +71,7 @@ pipeline {
                             set -a
                             . "$ENV_FILE"
                             set +a
-                            ./mvnw -B clean test
+                            bash ./mvnw -B clean test
                         '''
                     }
                 }
@@ -81,7 +81,7 @@ pipeline {
         stage('Discovery Tests') {
             steps {
                 dir('discovery') {
-                    sh './mvnw -B clean test'
+                    sh 'bash ./mvnw -B clean test'
                 }
             }
         }
@@ -102,16 +102,16 @@ pipeline {
         stage('Package Backend') {
             steps {
                 dir('product-service') {
-                    sh './mvnw -B verify -DskipTests'
+                    sh 'bash ./mvnw -B verify -DskipTests'
                 }
                 dir('user-service') {
-                    sh './mvnw -B verify -DskipTests'
+                    sh 'bash ./mvnw -B verify -DskipTests'
                 }
                 dir('media-service') {
-                    sh './mvnw -B verify -DskipTests'
+                    sh 'bash ./mvnw -B verify -DskipTests'
                 }
                 dir('order-service') {
-                    sh './mvnw -B verify -DskipTests'
+                    sh 'bash ./mvnw -B verify -DskipTests'
                 }
                 withCredentials([file(credentialsId: 'buy01-env', variable: 'ENV_FILE')]) {
                     dir('gateway') {
@@ -120,12 +120,12 @@ pipeline {
                             set -a
                             . "$ENV_FILE"
                             set +a
-                            ./mvnw -B verify -DskipTests
+                            bash ./mvnw -B verify -DskipTests
                         '''
                     }
                 }
                 dir('discovery') {
-                    sh './mvnw -B verify -DskipTests'
+                    sh 'bash ./mvnw -B verify -DskipTests'
                 }
             }
         }
@@ -213,7 +213,7 @@ pipeline {
                                             sh '''
                                                 set +x
                                                 test -s target/site/jacoco/jacoco.xml
-                                                ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \\
+                                                bash ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \\
                                                   -Dsonar.projectKey="$SONAR_PROJECT_KEY" \\
                                                   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
                                             '''
@@ -357,7 +357,7 @@ pipeline {
         // ========================================
         // 8. Prepare TLS Certificates
         // ========================================
-        stage('Prepare TLS Certificates') {
+        stage('Prepare Deployment Files') {
             when {
                 expression { env.BRANCH_NAME == 'main' && !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause') }
             }
@@ -378,7 +378,7 @@ pipeline {
                 ]) {
                     sh '''
                         set +x
-                        CERT_DIR="/var/jenkins_home/deploy-secrets/buy01/certs"
+                        CERT_DIR="/var/jenkins_home/deploy-secrets/${DEPLOY_PROJECT:-buy01}/certs"
                         mkdir -p "$CERT_DIR"
                         cp "$P12_FILE" \\
                            "$CERT_DIR/gateway-keystore.p12"
@@ -392,7 +392,21 @@ pipeline {
                             "$CERT_DIR/gateway-keystore.crt"
                         chmod 600 \\
                             "$CERT_DIR/gateway-keystore.key"
-                        echo "TLS certificates prepared."
+                        if [ -n "${DEPLOY_CERT_VOLUME:-}" ]; then
+                            docker volume create "$DEPLOY_CERT_VOLUME" > /dev/null
+                            tar -C "$CERT_DIR" -cf - gateway-keystore.p12 gateway-keystore.crt gateway-keystore.key |
+                                docker run --rm -i --network none --entrypoint tar \\
+                                    -v "$DEPLOY_CERT_VOLUME:/certs" nginx:alpine \\
+                                    --no-same-owner -xf - -C /certs
+                        fi
+                        if [ -n "${DEPLOY_MONGO_INIT_VOLUME:-}" ]; then
+                            docker volume create "$DEPLOY_MONGO_INIT_VOLUME" > /dev/null
+                            tar -C docker/mongo -cf - init-mongo.js |
+                                docker run --rm -i --network none --entrypoint tar \\
+                                    -v "$DEPLOY_MONGO_INIT_VOLUME:/init" nginx:alpine \\
+                                    --no-same-owner -xf - -C /init
+                        fi
+                        echo "Deployment certificates and database initialization prepared."
                     '''
                 }
             }
@@ -416,7 +430,7 @@ pipeline {
                         set +x
                         APP_IMAGE_TAG=${BUILD_NUMBER} \\
                         docker compose \\
-                            -p buy01 \\
+                            -p "${DEPLOY_PROJECT:-buy01}" \\
                             --env-file "$ENV_FILE" \\
                             config > /dev/null
                         echo "Docker Compose configuration is valid."
@@ -446,7 +460,7 @@ pipeline {
                         echo "================================"
                         APP_IMAGE_TAG=${BUILD_NUMBER} \\
                         docker compose \\
-                            -p buy01 \\
+                            -p "${DEPLOY_PROJECT:-buy01}" \\
                             --env-file "$ENV_FILE" \\
                             up -d
                         echo "Release #${BUILD_NUMBER} containers started."
@@ -473,7 +487,7 @@ pipeline {
                         set +x
                         MAX_ATTEMPTS=18
                         SLEEP_SECONDS=5
-                        RELEASE_FILE="/var/jenkins_home/deploy-secrets/buy01/last-successful-release"
+                        RELEASE_FILE="/var/jenkins_home/deploy-secrets/${DEPLOY_PROJECT:-buy01}/last-successful-release"
                         # ==================================
                         # Check one container
                         # ==================================
@@ -514,22 +528,14 @@ pipeline {
                         # Check whole platform
                         # ==================================
                         health_check() {
-                            # Databases
-                            check_container product-mongodb || return 1
-                            check_container media-mongodb || return 1
-                            check_container user-mongodb || return 1
-                            check_container order-mongodb || return 1
-                            # Infrastructure
-                            check_container buy01-kafka || return 1
-                            check_container buy01-discovery || return 1
-                            # Backend
-                            check_container buy01-user-service || return 1
-                            check_container buy01-product-service || return 1
-                            check_container buy01-media-service || return 1
-                            check_container buy01-order-service || return 1
-                            check_container buy01-gateway || return 1
-                            # Frontend
-                            check_container buy01-frontend || return 1
+                            for SERVICE in product-mongodb media-mongodb user-mongodb order-mongodb \\
+                                kafka discovery user-service product-service media-service order-service gateway frontend; do
+                                CONTAINER_ID=$(APP_IMAGE_TAG="${BUILD_NUMBER}" docker compose \\
+                                    -p "${DEPLOY_PROJECT:-buy01}" --env-file "$ENV_FILE" \\
+                                    ps --all --quiet "$SERVICE") || return 1
+                                [ -n "$CONTAINER_ID" ] || { echo "Missing service: $SERVICE"; return 1; }
+                                check_container "$CONTAINER_ID" || return 1
+                            done
                             return 0
                         }
                         # ==========================================
@@ -576,7 +582,7 @@ pipeline {
                         # ==========================================
                         APP_IMAGE_TAG=$PREVIOUS_RELEASE \\
                         docker compose \\
-                            -p buy01 \\
+                            -p "${DEPLOY_PROJECT:-buy01}" \\
                             --env-file "$ENV_FILE" \\
                             up -d
                         echo ""
@@ -620,8 +626,8 @@ pipeline {
             ==========================================
             PIPELINE SUCCESS
             Release #${BUILD_NUMBER}
-            successfully built, deployed
-            and passed health checks.
+            completed successfully. See the deployment
+            and health-check stages for release status.
             Images:
             product-service:${BUILD_NUMBER}
             user-service:${BUILD_NUMBER}
@@ -633,18 +639,20 @@ pipeline {
             ==========================================
             """
             script {
-                try {
-                    mail to: 'ayoubzone01@gmail.com',
-                         subject: "✅ SUCCESS: Release #${BUILD_NUMBER} Deployed",
+                if (env.CI_NOTIFY_EMAIL?.trim()) {
+                    try {
+                        mail to: env.CI_NOTIFY_EMAIL,
+                         subject: "SUCCESS: Build #${BUILD_NUMBER}",
                          body: """
                          Hello Team,
-                         Release #${BUILD_NUMBER} was successfully built, tested, and deployed!
-                         All microservices and database containers passed health checks.
+                         Build #${BUILD_NUMBER} completed successfully.
+                         Check the deployment stage for release health results.
                          Regards,
                          Jenkins CI/CD
                          """
-                } catch (Exception e) {
-                    echo "Warning: Email notification skipped (SMTP not configured): ${e.message}"
+                    } catch (Exception e) {
+                        echo "Email notification could not be delivered; check SMTP configuration."
+                    }
                 }
             }
         }
@@ -660,8 +668,9 @@ pipeline {
             ==========================================
             """
             script {
-                try {
-                    mail to: 'ayoubzone01@gmail.com',
+                if (env.CI_NOTIFY_EMAIL?.trim()) {
+                    try {
+                        mail to: env.CI_NOTIFY_EMAIL,
                          subject: "❌ FAILURE: Build #${BUILD_NUMBER}",
                          body: """
                          Attention Team,
@@ -670,8 +679,9 @@ pipeline {
                          Regards,
                          Jenkins CI/CD
                          """
-                } catch (Exception e) {
-                    echo "Warning: Email notification skipped (SMTP not configured): ${e.message}"
+                    } catch (Exception e) {
+                        echo "Email notification could not be delivered; check SMTP configuration."
+                    }
                 }
             }
         }

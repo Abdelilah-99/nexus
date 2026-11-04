@@ -224,3 +224,45 @@ Docker security options include rootless. Previous daemon logs show permission
 denied mounting /sys/kernel/security and containerd startup timeout. Existing
 local frontend is healthy on 4200; Jenkins Lab's daemon maps the same host port.
 No containers, volumes or credentials were changed by this inspection.
+
+
+## Jenkins host-daemon preparation — 2026-11-04
+
+Branch `feat/jenkins-host-staging`, based on main c9ca7ed. The host daemon is
+rootless; the existing privileged DinD failed during containerd startup. Added a
+host-daemon controller profile and a separate staging application overlay. The
+launcher preserves the running local app, Sonar/PostgreSQL and Jenkins home.
+Staging uses project `buy02-staging`, frontend 4300, gateway loopback 8445, Kafka
+loopback 19092 and Mongo loopback 37017/37019/37020/37021. Certificates and Mongo
+init scripts are transferred through Docker into dedicated named volumes; no
+controller-local bind paths survive in the resolved staging model.
+
+Observed local results:
+
+- Sonar bootstrap completed and preserved/provisioned all seven credentials.
+- Jenkins started healthy at http://localhost:8085. Its unprivileged Jenkins user
+  (UID 1000, supplementary mapped socket group) successfully queried the host daemon.
+- The live controller validated the candidate Jenkinsfile. The verifier confirmed
+  all seven loaded tokens match startup secrets and have Execute Analysis access.
+- Existing `CheckoutIntegrationTest` ran inside Jenkins against disposable MongoDB:
+  3 tests passed, zero skipped. Testcontainers cleaned up its containers.
+- Gateway tests: 27 passed, zero skipped, including configurable staging origins and
+  rejection of other origins. Provisioning/configuration/Compose tests: 25 passed;
+  CI helper tests: 16 passed. Bash syntax and whitespace checks passed.
+- Nginx configuration validation passed using the application network. The first
+  check found that `request_port` is reserved in the current image; the capture now
+  uses `buy02_request_port`.
+- Fake certificate transfer into a disposable volume preserved content and produced
+  root-owned mode-600 files. The probe volume was removed.
+- Local staging preflight found a keystore password mismatch. Re-exported the
+  existing matching PEM certificate/key using the configured password, verified it,
+  and preserved the old keystore privately in ignored `.local/jenkins-backups/`.
+  No credentials or private keys are committed.
+
+The controller uses anonymous checkout for this public repository; private
+repositories can supply a GitHub read token. Email notifications require explicit
+`CI_NOTIFY_EMAIL` configuration. Main-only analysis/deployment guards remain.
+
+Pending: reviewed merge into main, hosted CI evidence for this branch, then a full
+manual Jenkins run with deployment and staging smoke tests. No staging success is
+claimed by these preparation checks.

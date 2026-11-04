@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "127.0.0.1:27019:27017"
+      - "127.0.0.1:${PRODUCT_MONGO_PORT:-27019}:27017"
 
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${MONGO_ROOT_USERNAME}"
@@ -19,7 +19,7 @@ services:
 
     volumes:
       - product_mongo_data:/data/db
-      - ./docker/mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./docker/mongo:/docker-entrypoint-initdb.d:ro
 
     networks:
       - product-db-network
@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "127.0.0.1:27020:27017"
+      - "127.0.0.1:${MEDIA_MONGO_PORT:-27020}:27017"
 
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${MONGO_ROOT_USERNAME}"
@@ -63,7 +63,7 @@ services:
 
     volumes:
       - media_mongo_data:/data/db
-      - ./docker/mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./docker/mongo:/docker-entrypoint-initdb.d:ro
 
     networks:
       - media-db-network
@@ -96,7 +96,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "127.0.0.1:27017:27017"
+      - "127.0.0.1:${USER_MONGO_PORT:-27017}:27017"
 
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${MONGO_ROOT_USERNAME}"
@@ -107,7 +107,7 @@ services:
 
     volumes:
       - user_mongo_data:/data/db
-      - ./docker/mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./docker/mongo:/docker-entrypoint-initdb.d:ro
 
     networks:
       - user-db-network
@@ -140,7 +140,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "127.0.0.1:27021:27017"
+      - "127.0.0.1:${ORDER_MONGO_PORT:-27021}:27017"
 
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${MONGO_ROOT_USERNAME}"
@@ -151,7 +151,7 @@ services:
 
     volumes:
       - order_mongo_data:/data/db
-      - ./docker/mongo/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+      - ./docker/mongo:/docker-entrypoint-initdb.d:ro
 
     networks:
       - order-db-network
@@ -184,7 +184,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "9092:9092"
+      - "${KAFKA_PUBLISH:-9092}:9092"
 
     environment:
       CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
@@ -262,10 +262,12 @@ services:
       - "${GATEWAY_PORT:-8444}:8080"
 
     volumes:
-      - /var/jenkins_home/deploy-secrets/buy01/certs/gateway-keystore.p12:/run/secrets/gateway-keystore.p12:ro
+      - /var/jenkins_home/deploy-secrets/buy01/certs:/run/secrets:ro
 
     environment:
       SERVER_PORT: "8080"
+
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:4200,https://localhost:4200}"
 
       SERVER_SSL_ENABLED: "true"
 
@@ -513,11 +515,10 @@ services:
     restart: unless-stopped
 
     ports:
-      - "4200:443"
+      - "${FRONTEND_PORT:-4200}:443"
 
     volumes:
-      - /var/jenkins_home/deploy-secrets/buy01/certs/gateway-keystore.crt:/etc/nginx/certs/gateway-keystore.crt:ro
-      - /var/jenkins_home/deploy-secrets/buy01/certs/gateway-keystore.key:/etc/nginx/certs/gateway-keystore.key:ro
+      - /var/jenkins_home/deploy-secrets/buy01/certs:/etc/nginx/certs:ro
 
     depends_on:
       gateway:

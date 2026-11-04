@@ -86,8 +86,11 @@ provide a bootstrap administrator User Token and run the existing bootstrap.
 When ready, rebuild/recreate Jenkins using its existing persistent volumes to load
 the changed entrypoint and JCasC. Run `verify-jenkins.js` with Jenkinsfile validation
 to check the live controller and Execute Analysis permissions for all seven projects.
-The pipeline's existing Sonar analysis restriction to `main` remains. Check that
-`github-mr-jenk` can access the repository configured in the JCasC job.
+The pipeline's existing Sonar analysis restriction to `main` remains. Public
+repositories use anonymous checkout when no PAT is supplied; private repositories
+require `github-mr-jenk` with read access. On rootless hosts, use
+`scripts/run-jenkins-host.sh` and the README's host-daemon instructions, preserving
+Jenkins/Sonar data. Merge infrastructure changes before running the main job.
 Do not remove volumes or use `--initialize` on the persistent SonarQube server.
 
 The Order Service now persists orders and has real MongoDB integration tests.
