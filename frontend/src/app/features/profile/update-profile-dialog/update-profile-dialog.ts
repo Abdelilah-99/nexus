@@ -120,6 +120,12 @@ export class UpdateProfileDialog implements OnInit {
     }
   }
 
+  onBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.close();
+    }
+  }
+
   @HostListener('document:keydown.escape')
   onEscape(): void {
     this.close();

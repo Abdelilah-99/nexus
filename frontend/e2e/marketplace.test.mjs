@@ -267,4 +267,26 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
     contract(await api(client.page, `/unknown-route-${keyword}`), 404, 'NOT_FOUND');
   });
 
+  scenario('seller profile opens the image picker and saves the studio handle', async () => {
+    const page = seller.page;
+    const name = `${keyword} Studio`;
+    await page.goto(`${baseUrl}/profile`, { waitUntil: 'networkidle0' });
+    await clickText(page, 'button', 'Edit studio bio', false);
+    const [chooser] = await Promise.all([
+      page.waitForFileChooser(),
+      page.locator('#profileAvatar').click(),
+    ]);
+    await chooser.accept([]);
+    await page.locator('#profileUsername').fill(name);
+    const [response] = await Promise.all([
+      page.waitForResponse(r => r.url().endsWith('/api/me') && r.request().method() === 'PUT'),
+      clickText(page, 'button[type="submit"]', 'Save modifications'),
+    ]);
+    assert.equal(response.status(), 200);
+    assert.equal((await response.json()).username, name);
+    await page.waitForSelector('app-update-profile-dialog', { hidden: true });
+    await page.reload({ waitUntil: 'networkidle0' });
+    assert.equal(await page.$eval('.maker-name', element => element.textContent.trim()), name);
+  });
+
 });

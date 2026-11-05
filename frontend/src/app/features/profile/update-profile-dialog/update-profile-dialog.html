@@ -1,4 +1,4 @@
-<dialog class="buy-modal-backdrop" (click)="$event.target === $event.currentTarget && close()" (keydown.escape)="close()" open aria-modal="true" aria-labelledby="profileDialogTitle">
+<dialog class="buy-modal-backdrop" (click)="onBackdropClick($event)" (keydown.escape)="close()" open aria-modal="true" aria-labelledby="profileDialogTitle">
   <div class="buy-modal-content profile-dialog">
     <div class="profile-dialog-header">
       <div>
