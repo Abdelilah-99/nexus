@@ -1,4 +1,4 @@
-// Run inside Jenkins: docker compose -p sonar-lab exec -T jenkins node < sonar-init/verify-jenkins.js
+// From the repository root: docker exec -i jenkins node < jenkins-lab/sonar-init/verify-jenkins.js
 const fs = require('node:fs');
 async function main() {
     const headers = { Authorization: 'Basic ' + Buffer.from('admin:' +

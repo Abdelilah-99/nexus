@@ -1,186 +1,143 @@
-# Buy02 — E-Commerce Marketplace with CI/CD
+# Buy02 — run and audit the project
 
-Buy02 extends the Buy01 marketplace with **shopping carts**, **Pay on Delivery checkout**, **order management**, **product search/filtering**, and **customer/seller profile analytics**. It uses **Spring Boot microservices** and **Angular**, with **Jenkins + SonarQube** for automated testing, code analysis, and Docker deployment.
+Buy02 is a Spring Boot microservices and Angular marketplace: products/images,
+search and price sliders, shopping cart, Pay on Delivery, orders and customer/seller
+analytics. This README is the single setup, testing and audit guide.
 
-The target experience is browsing → cart → checkout → order tracking, with purchasing and sales dashboards. Some required Buy02 features are still pending; the table below describes the current source code, not a verified deployed release.
+**On a new PC, follow steps 1–8 below in order.** Commands use **Bash on Linux**
+from the repository root. They configure the existing host-Docker Jenkins setup;
+you do not need Docker-in-Docker. Windows/macOS host setup is not covered here.
 
-## Buy02 scope and implementation status
-
-| Feature | Current implementation | Remaining work |
-| --- | --- | --- |
-| Accounts and profiles | Registration, login, JWT authentication, profile viewing/editing | Verify dashboards against deployed order data |
-| Product discovery | Keywords, category, price and stock filters, sorting, pagination; Angular catalog and MongoDB indexes | Verify behavior and query performance with representative data |
-| Cart | Persistent client cart, add/update/remove/clear, availability checks and totals | Verify full integration and critical end-to-end scenarios |
-| Pay on Delivery | Address → review → confirmation; review tokens, idempotency keys and checkout recovery | Verify retry and failure handling in deployment |
-| Orders | Customer/seller pages, paginated search, details/timeline, cancellation, reorder-to-cart and status updates; category snapshots and stock reservation | Review archive behavior and final order integration |
-| Customer analytics | Delivered-order spending, order count, units, top products/categories and monthly charts in the profile | Verify live integration and team acceptance of financial rules |
-| Seller analytics | Delivered-order revenue, units sold, best sellers, categories and monthly sales/order trends in profile and seller dashboard | Verify live integration and team acceptance of financial rules |
-| Testing and delivery | Backend/Angular tests, Jenkins pipeline, SonarQube and GitHub quality workflow | Verify the new browser job on CI and the staging deployment |
-
-Wishlist and additional payment methods are optional bonuses. Analytics use real order snapshots and authenticated identity. This implementation counts only products from `DELIVERED` seller fulfillments for all figures, excluding cancelled and undelivered products; this treats Pay on Delivery amounts as realized spending/revenue. The team should confirm this policy before merging. Category snapshots are stored on new orders; missing or blank historical categories count as `uncategorized`.
-
-## Team responsibilities
-
-| Developer | Primary ownership |
+| What you want | URL after startup |
 | --- | --- |
-| Anass | Cart backend, Angular cart, Pay on Delivery checkout and checkout-to-order integration |
-| Abdelillah | Orders Microservice, shared order contract, lifecycle rules, customer/seller order screens |
-| Ayoub | Product search/filtering, customer and seller analytics APIs, profile dashboards and charts |
+| Audit/staging app built by Jenkins | **https://localhost:4300** |
+| Jenkins | **http://localhost:8085** |
+| SonarQube | **http://localhost:9000** |
+| Optional local development app | https://localhost:4200 |
 
-All three developers contribute tests, security checks, API documentation, integration testing, feature-branch PRs, reviews, and fixes from SonarQube. Agree on shared contracts before changing checkout/order integration or analytics inputs.
+Port 4300 separates staging from the optional development app on 4200. You do not
+need to run both for the audit. A fresh PC starts with empty application databases;
+create your seller/client accounts through the website. Secrets and existing
+application data are not included in a Git clone.
 
-Infrastructure identifiers inherited from Buy01 (such as `buy01-env`, container names, SonarQube keys and Java packages) remain in use. Use the exact names documented below; changing the project title does not rename these resources.
+## 1. Install prerequisites and clone
 
-## At a glance
+For the Jenkins/staging path install:
 
-| Layer | Technology | Responsibility |
-| --- | --- | --- |
-| Frontend | Angular | Marketplace UI for clients and sellers |
-| Backend | Spring Boot | User, Product, Media, Order (including cart), Gateway, and Discovery services |
-| Data | MongoDB | Application data |
-| Events | Apache Kafka | Asynchronous service events |
-| Media | Cloudinary | Uploaded product images |
-| CI/CD | Jenkins | Tests, packaging, scanning, building, deployment |
-| Code quality | SonarQube | Static analysis and quality gates |
-| Coverage | JaCoCo, LCOV | Java and frontend test coverage |
-| Infrastructure | Docker Compose + Docker-in-Docker | Isolated services and application deployment |
+- Git, Docker Engine with Docker Compose v2, Python 3, OpenSSL, curl and `iproute2`.
+- A browser and a Cloudinary account with working image-upload credentials.
+- Internet access for Docker images, Jenkins plugins, Maven/npm dependencies and
+  Cloudinary. Allow sufficient free RAM and disk for the builds and SonarQube.
 
-## Application architecture
+Use the [Docker Engine installation instructions](https://docs.docker.com/engine/install/)
+for your Linux distribution. Your normal user must be able to run Docker commands
+without `sudo`, using either rootless Docker or your configured Docker permissions.
+Jenkins contains Java 21, Node.js 24.20.0 and the build tools; host Java/npm are only
+needed for the optional development/testing commands later in this README.
 
-```mermaid
-flowchart LR
-    Browser[Angular in browser] --> Nginx[Nginx HTTPS :4200]
-    Nginx -->|/api prefix removed| Gateway[API Gateway]
-    Gateway --> Users[User Service]
-    Gateway --> Products[Product Service]
-    Gateway --> Media[Media Service]
-    Gateway --> Orders[Order Service: cart and orders]
-    Orders -->|Current product data| Products
-    Products -->|Image metadata| Media
-    Products --> Kafka[Kafka]
-    Kafka -->|Product image cleanup| Media
-    Media --> Cloudinary[Cloudinary]
+```bash
+git --version
+docker info
+docker compose version
+python3 --version
+openssl version
+curl --version
+ip -4 route
+
+git clone https://github.com/AyyoubMh48/buy-02.git
+cd buy-02
 ```
 
-Eureka provides service discovery. Each business service has its own MongoDB database. The gateway validates JWTs, removes incoming identity headers, and forwards authenticated user/role headers. Services enforce role and ownership rules using that context, so internal service reachability is part of the security boundary.
-
-The browser uses same-origin `/api/...` URLs through Nginx. API paths in this README refer to **https://localhost:4200/api**, not direct access to each service.
-
-## CI/CD workflow
-
-```mermaid
-flowchart TD
-    Developer[Developer pushes code] --> GitHub
-    GitHub --> Jenkins
-    Jenkins --> Tests[Backend and frontend tests]
-    Tests --> Reports[JaCoCo and LCOV reports]
-    Reports --> Sonar[Seven SonarQube analyses]
-    Sonar --> Gates{All quality gates pass?}
-    Gates -->|No| Stop[Stop pipeline]
-    Gates -->|Yes| Build[Build Docker images]
-    Build --> Deploy[Deploy with Docker Compose]
-    Deploy --> Health{Health checks pass?}
-    Health -->|Yes| Success[Release successful]
-    Health -->|No| Rollback[Attempt rollback to previous healthy release]
-```
-
-The classic lab runs the application inside `jenkins-docker`; use `docker exec jenkins-docker docker ps` to inspect it. The host-daemon alternative below runs separate `buy02-staging-*` containers visible in the host's `docker ps`.
-
-## Requirements
-
-- Linux, Git, OpenSSL, Docker Engine, and Docker Compose v2
-- Permission to run Docker commands
-- A GitHub account/token with read access to the repository
-- Cloudinary credentials if you want to test image uploads
-- Sufficient free memory and disk for Jenkins, SonarQube, and builds (approximately 8 GB available RAM is a useful starting point)
-
-SonarQube's Elasticsearch needs a suitable host setting:
+Prepare the Linux host for SonarQube's embedded Elasticsearch:
 
 ```bash
 sysctl vm.max_map_count
+sysctl fs.file-max
+ulimit -n
+ulimit -u
 ```
 
-If it is below `524288`, ask your system administrator to configure it. This is a **host** setting, not a Docker cache problem.
-
-## Run this checkout locally without Jenkins
-
-Use this path to test a feature branch with the host Docker daemon. It uses separate `buy02-local-*` containers, networks and database volumes; Jenkins deployment remains a separate workflow.
-
-Requirements: Docker Engine with Compose v2, Java 21, Node.js/npm and OpenSSL. Ports 4200, 8444, 9092 and the database ports in `docker-compose.yml` must be available. Stop the failing `jenkins-docker` container first if it occupies port 4200; other containers using those ports must also be stopped or reconfigured.
-
-From the repository root:
+The documented requirements are at least 524288 memory-map areas, 131072 file
+descriptors and 8192 threads. If your values are lower, have the host administrator
+apply the [SonarQube Linux prerequisites](https://docs.sonarsource.com/sonarqube-community-build/server-installation/pre-installation/linux).
+For example, a lower memory-map limit can be raised with:
 
 ```bash
-bash scripts/run-local.sh
+sudo sysctl -w vm.max_map_count=524288
 ```
 
-The script builds backend JARs and Angular, generates private development credentials and self-signed certificates under ignored `.local/`, builds Docker images, and waits for the stack to become healthy. Open **https://localhost:4200** and accept the local certificate warning. Register a CLIENT or SELLER; this stack starts with empty databases.
+That command lasts until reboot; the linked instructions explain persistent
+settings and service limits. These are host prerequisites, not application settings.
 
-Set real `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` in `.local/app.env`, then rerun the script to enable image uploads. Without these values, accounts, catalog reads and empty analytics can be tested, but product image uploads will fail. Do not replace database passwords after the local volumes have been initialized.
+## 2. Create private configuration — fresh PC only
 
-If the JARs and Angular build already match the current code, skip rebuilding those artifacts:
-
-```bash
-bash scripts/run-local.sh --skip-build
-```
-
-Inspect or stop this local stack:
+This block generates new JWT, database, TLS-keystore and Sonar database passwords.
+It stops if either configuration already exists, so it does not overwrite an
+existing installation. Run it only for the first setup on a new PC.
 
 ```bash
-docker compose --env-file .local/app.env -p buy02-local -f docker-compose.yml -f compose.local.yml ps
-docker compose --env-file .local/app.env -p buy02-local -f docker-compose.yml -f compose.local.yml logs --tail=100
-docker compose --env-file .local/app.env -p buy02-local -f docker-compose.yml -f compose.local.yml stop
-```
-
-Keep `.local/` private and preserve it between restarts. The instructions below describe the full Jenkins/SonarQube installation instead.
-
-## Quick start — Jenkins fresh installation
-
-> Commands below are for **Bash on Linux**, from the repository root. This is a fresh-install guide: do not overwrite existing secrets or delete volumes when updating an existing installation.
-
-### 1. Clone and prepare configuration
-
-```bash
-git clone https://github.com/AyyoubMh48/buy-02.git
-cd buy-02
-
 umask 077
-mkdir -p jenkins-lab/jenkins-secrets
-chmod 700 jenkins-lab/jenkins-secrets
-cp jenkins-lab/.env.example jenkins-lab/.env
-cp .env.example jenkins-lab/jenkins-secrets/buy01-env
+python3 - <<'PY'
+from pathlib import Path
+import secrets
+
+folder = Path('jenkins-lab/jenkins-secrets')
+app = folder / 'buy01-env'
+sonar = Path('jenkins-lab/.env')
+if app.exists() or sonar.exists():
+    raise SystemExit('Configuration already exists. Keep it and continue with the next step.')
+folder.mkdir(parents=True, exist_ok=True)
+folder.chmod(0o700)
+values = {'JWT_SECRET': secrets.token_hex(32), 'MONGO_ROOT_USERNAME': 'buy02_admin'}
+for name in ('SERVER_SSL_KEY_STORE_PASSWORD', 'MONGO_ROOT_PASSWORD',
+             'PRODUCT_MONGO_PASSWORD', 'MEDIA_MONGO_PASSWORD',
+             'USER_MONGO_PASSWORD', 'ORDER_MONGO_PASSWORD'):
+    values[name] = secrets.token_hex(24)
+lines = []
+for line in Path('.env.example').read_text().splitlines():
+    key = line.split('=', 1)[0]
+    lines.append(f'{key}={values[key]}' if key in values else line)
+app.write_text('\n'.join(lines) + '\n')
+sonar.write_text('SONAR_DB_PASSWORD=' + secrets.token_hex(24) + '\n')
+app.chmod(0o600)
+sonar.chmod(0o600)
+print('Created private configuration. Set the three Cloudinary values next.')
+PY
 ```
 
-Edit these two files **before starting the application**:
+Open **`jenkins-lab/jenkins-secrets/buy01-env`** in your editor and replace only
+these three example values with your Cloudinary account values:
 
-| File | What to configure |
+| Variable | Where its value comes from |
 | --- | --- |
-| `jenkins-lab/.env` | `SONAR_DB_PASSWORD` for SonarQube PostgreSQL |
-| `jenkins-lab/jenkins-secrets/buy01-env` | `JWT_SECRET`, JWT expiration, MongoDB credentials, Cloudinary credentials, gateway keystore password |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary dashboard's **Cloud name**, not the key's display name |
+| `CLOUDINARY_API_KEY` | The active API key |
+| `CLOUDINARY_API_SECRET` | The matching API secret |
 
-Generate a JWT secret with `openssl rand -hex 32`. Keep all local secrets out of Git. The `buy01-env` file must contain valid shell `KEY=value` lines; quote values containing shell-special characters.
+Use valid `KEY=value` lines; quote values containing shell-special characters.
+Keep the generated JWT/database/keystore values. Staging rejects unchanged example
+Cloudinary values; image upload cannot work without real provider credentials.
+Use current private credentials, not values copied from old source history.
 
-Create the Jenkins admin password using a hidden prompt. GitHub username/token prompts below are needed only for a private repository; this public repository supports anonymous checkout:
+Create the Jenkins administrator password using a hidden prompt:
 
 ```bash
-read -rsp 'Jenkins admin password: ' value; echo
-printf '%s\n' "$value" > jenkins-lab/jenkins-secrets/jenkins-admin-password
-unset value
-
-read -rp 'GitHub username: ' value
-printf '%s\n' "$value" > jenkins-lab/jenkins-secrets/github-username
-unset value
-
-read -rsp 'GitHub read-access token: ' value; echo
-printf '%s\n' "$value" > jenkins-lab/jenkins-secrets/github-pat
-unset value
+read -rsp 'Choose a Jenkins admin password: ' buy02_admin_password; echo
+printf '%s\n' "$buy02_admin_password" > jenkins-lab/jenkins-secrets/jenkins-admin-password
+unset buy02_admin_password
+chmod 600 jenkins-lab/jenkins-secrets/jenkins-admin-password
 ```
 
-If you already cloned the repository, start with `umask 077` from your checkout instead of cloning again.
+This public repository needs no GitHub PAT. Leave `github-username` and `github-pat`
+absent. They are optional for a private repository. Keep all secret files out of Git
+and chat. Legacy internal names such as `buy01-env`, Java packages, browser storage
+keys, Sonar project keys and volume names remain for compatibility; the website
+brand is BUY02.
 
-The Jenkins job checks out `main` from the repository configured in `jenkins-lab/jcasc/jenkins.yaml`. Set that URL to the repository you intend to deploy (for this checkout, `https://github.com/AyyoubMh48/buy-02.git`), and supply a GitHub token with read access if that repository is private. Push changes before running the job: local, uncommitted edits are not included. Testing a feature branch requires configuring the job to check out that branch; the default job builds `main`.
+## 3. Generate matching HTTPS certificates
 
-### 2. Generate local HTTPS certificates
+Run once for this fresh installation. The PKCS12 password is read from the
+configuration generated above, so the gateway and keystore use the same password.
 
 ```bash
 openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 365 \
@@ -189,412 +146,332 @@ openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 365 \
   -subj '/CN=localhost' \
   -addext 'subjectAltName=DNS:localhost,DNS:gateway,IP:127.0.0.1'
 
+buy02_keystore_password=$(sed -n 's/^SERVER_SSL_KEY_STORE_PASSWORD=//p' jenkins-lab/jenkins-secrets/buy01-env)
+export buy02_keystore_password
 openssl pkcs12 -export -name gateway \
   -inkey jenkins-lab/jenkins-secrets/gateway-keystore.key \
   -in jenkins-lab/jenkins-secrets/gateway-keystore.crt \
-  -out jenkins-lab/jenkins-secrets/gateway-keystore.p12
-
-chmod 600 jenkins-lab/.env jenkins-lab/jenkins-secrets/*
+  -out jenkins-lab/jenkins-secrets/gateway-keystore.p12 \
+  -passout env:buy02_keystore_password
+unset buy02_keystore_password
+chmod 600 jenkins-lab/jenkins-secrets/*
 ```
 
-Use **the same export password** you configured as `SERVER_SSL_KEY_STORE_PASSWORD` in `buy01-env`. These are self-signed **development** certificates, not public-production certificates.
+These are self-signed local certificates. Accept/trust the localhost certificate
+in your audit browser. On an existing installation, keep its certificates and
+matching password rather than rerunning fresh-install steps.
 
-### 3. Start SonarQube and PostgreSQL
+## 4. Start SonarQube and create its token
 
 ```bash
-docker compose -f jenkins-lab/compose.yml config --quiet
-docker compose -f jenkins-lab/compose.yml up -d --wait --wait-timeout 900 sonar-db sonarqube
+docker compose --env-file jenkins-lab/.env -p jenkins-lab -f jenkins-lab/compose.yml config --quiet
+docker compose --env-file jenkins-lab/.env -p jenkins-lab -f jenkins-lab/compose.yml \
+  up -d --wait --wait-timeout 900 sonar-db sonarqube
 ```
 
-Open **http://localhost:9000**. On a new instance, log in with `admin` / `admin`, change the default password, and go to **My Account → Security**. Generate an administrator **User Token** (not a Project Analysis Token).
+Open **http://localhost:9000**. On a fresh instance sign in with `admin` / `admin`,
+change the password, then open **My Account → Security → Generate Tokens**.
+Generate an administrator **User Token** (not a Project Analysis Token).
 
-Save it without printing it:
+Save it using the hidden prompt:
 
 ```bash
-read -rsp 'SonarQube administrator User Token: ' sonar_admin_token; echo
-printf '%s\n' "$sonar_admin_token" > jenkins-lab/jenkins-secrets/sonar-bootstrap-token
-unset sonar_admin_token
+read -rsp 'SonarQube administrator User Token: ' buy02_sonar_token; echo
+printf '%s\n' "$buy02_sonar_token" > jenkins-lab/jenkins-secrets/sonar-bootstrap-token
+unset buy02_sonar_token
 chmod 600 jenkins-lab/jenkins-secrets/sonar-bootstrap-token
 ```
 
-### 4. Provision SonarQube projects and tokens
+Provision the seven projects, analysis tokens, exact project keys and internal
+Jenkins quality-gate webhook:
 
 ```bash
-docker compose -f jenkins-lab/compose.yml --profile bootstrap run --rm sonar-init
+docker compose --env-file jenkins-lab/.env -p jenkins-lab -f jenkins-lab/compose.yml \
+  --profile bootstrap run --rm --no-deps sonar-init
 ```
 
-Successful output should end with `Provisioning complete; recreate Jenkins to load secret files`.
+Expected final message: **`Provisioning complete; recreate Jenkins to load secret files`**.
+The bootstrap preserves existing valid projects/tokens on rerun; do not manually
+create seven tokens or delete SonarQube volumes. Its project keys are
+`buy01-product-service`, `buy01-user-service`, `buy01-media-service`,
+`buy01-order-service`, `buy01-gateway`, `buy01-discovery`, `buy01-frontend`.
 
-The bootstrap prepares **seven SonarQube projects**, their analysis tokens, and the internal Jenkins quality-gate webhook:
-
-| Component | SonarQube project key | Jenkins credential ID |
-| --- | --- | --- |
-| Product Service | `buy01-product-service` | `sonar-product-token` |
-| User Service | `buy01-user-service` | `sonar-user-token` |
-| Media Service | `buy01-media-service` | `sonar-media-token` |
-| Order Service (Cart & Checkout) | `buy01-order-service` | `sonar-order-token` |
-| API Gateway | `buy01-gateway` | `sonar-gateway-token` |
-| Eureka Discovery | `buy01-discovery` | `sonar-discovery-token` |
-| Angular frontend | `buy01-frontend` | `sonar-frontend-token` |
-
-**Why this step comes first:** Jenkins loads local analysis-token files when its startup configuration runs. SonarQube projects do not need to exist for Jenkins to define a server installation, but valid projects and tokens are required for successful scans.
-
-### 5. Start Jenkins
-
-Choose the host-daemon setup on rootless Docker (including this development machine).
-It reuses the existing Jenkins home and SonarQube network, preserves the local app on
-4200, and reserves **4300** for staging. Run it after provisioning the seven tokens:
+## 5. Start Jenkins and verify its configuration
 
 ```bash
-scripts/run-jenkins-host.sh
+bash scripts/run-jenkins-host.sh
 ```
 
-The launcher discovers the local Docker Unix socket and the host's routable IPv4
-address. Set `JENKINS_TEST_HOST=<host-ip>` if automatic routing chooses the wrong
-interface. Its private settings go in `.local/jenkins-host.env`. The entrypoint adds
-Jenkins to the socket's mapped group; it does not change host socket permissions.
-Access to this daemon lets Jenkins control host containers, so use trusted builds.
-Do not run this profile and the classic controller together.
+The launcher creates/reuses the Jenkins home and network, detects your Unix Docker
+socket and host IPv4 address, and starts Jenkins without privileged DinD. Its
+private host settings are saved in `.local/jenkins-host.env`. This Linux setup uses
+one local Docker daemon; run trusted team builds only. If automatic address
+selection is wrong, rerun with `JENKINS_TEST_HOST=<reachable-host-ip>`.
 
-The host profile sets `COMPOSE_FILE=docker-compose.yml:compose.jenkins-host.yml`,
-`DEPLOY_PROJECT=buy02-staging`, separate database/Kafka/gateway ports, and a CORS
-allowlist for localhost:4300. Deployment copies certificates and MongoDB init scripts
-through Docker into dedicated named volumes, because controller paths are not host
-paths. Database volumes remain scoped to the staging project. Use `docker ps` to
-inspect `buy02-staging-*` containers after deployment.
+Open **http://localhost:8085**, username **`admin`**, with the password from step 2.
+Check that these jobs exist:
 
-For a host supporting privileged Docker-in-Docker, use the classic setup instead:
-
-```bash
-docker compose -f jenkins-lab/compose.yml up -d --build --wait --wait-timeout 900 docker jenkins
-docker compose -f jenkins-lab/compose.yml ps
-```
-
-Open **http://localhost:8085**, sign in as `admin` using the password from step 1, and verify:
-
-- **Manage Jenkins → System → SonarQube installations** shows `SonarQube` at `http://sonarqube:9000`.
-- **Manage Jenkins → Credentials** contains the seven SonarQube credential IDs.
-- The `first-pipeline` job exists.
-
-**Important JCasC check:** Having SonarQube settings inside `/casc/jenkins.yaml` does **not** prove Jenkins applied them. In **Manage Jenkins → Configuration as Code**, check the **last applied configuration path** and verify that the server installation is actually visible. If Jenkins applies `/tmp/jenkins-base.yaml` without the Sonar section, investigate the startup/JCasC generation path instead of manually adding the server or clearing Docker volumes.
-
-### 6. Run the pipeline
-
-Merge the infrastructure PR into `main` after review and green CI before starting this job; Jenkins checks out the remote `main` Jenkinsfile. In Jenkins, open **`first-pipeline` → Build Now → Console Output**. A scheduled run skips deployment; use **Build Now** to validate staging.
-
-The expected sequence is:
-
-1. Checkout from GitHub.
-2. Run backend tests, package JARs, and generate JaCoCo coverage.
-3. Run Angular tests, generate LCOV coverage, and build the frontend.
-4. Analyze all seven projects in SonarQube and wait for their quality gates.
-5. Only if all gates pass, build Docker images tagged with the Jenkins build number.
-6. Deploy the application, check health, and attempt rollback when an eligible previous release exists and deployment health fails.
-
-A green Jenkins result is meaningful only if the deployment and health-check stages ran as expected. Images are built in the selected Docker daemon; this pipeline does not push them to Docker Hub. Email notifications are disabled unless `CI_NOTIFY_EMAIL` is explicitly configured.
-
-### Validate a pull request in Jenkins
-
-Before merging a team PR, open **pull-request-checks → Build with Parameters**,
-enter its GitHub number as `PR_NUMBER`, and run it. Add the resulting Jenkins build
-link to your PR manually for the reviewer. This job builds and tests the PR combined
-with current `main`, archives JUnit/coverage and the validated merge SHA, and does
-not deploy staging. Keep the required GitHub Actions/SonarQube PR check green too.
-After review and merge, use **first-pipeline → Build Now** for quality gates, images
-and staging deployment.
-
-The PR job is defined by controller-owned files in `jenkins-lab/jcasc/`, so a PR
-cannot replace its Jenkins pipeline definition. This Docker lab accepts manually
-selected, same-repository PRs from trusted team members into main; fork and external
-author builds are rejected. It requires no GitHub PAT for this public repository.
-When updating this setup, pull the reviewed configuration and rerun
-`scripts/run-jenkins-host.sh` after any active builds finish to load JCasC.
-
-### 7. Open and test the marketplace
-
-| Service | URL |
+| Job | Purpose |
 | --- | --- |
-| Marketplace | **https://localhost:4300** (host-daemon staging), **https://localhost:4200** (classic lab or local checkout) |
-| Jenkins | http://localhost:8085 |
-| SonarQube | http://localhost:9000 |
+| `first-pipeline` | Test/scan/build remote main and deploy staging |
+| `pull-request-checks` | Build/test a selected team PR before merging; no deployment stage |
 
-The browser may warn about the self-signed development certificate.
-
-Test the implemented flow:
-
-1. Register as a **SELLER** and create several products with images, different categories, prices and stock quantities. Cloudinary credentials are required for uploads.
-2. Browse `/products` as a visitor or **CLIENT**. Test keyword/category/price/stock filters, sorting, pagination, and empty results.
-3. As a **CLIENT**, add products to `/cart`, change quantities, remove items and check totals.
-4. Open `/checkout`, enter the delivery address, review the order and confirm **Pay on Delivery**. Check the success response and that the cart clears after confirmation.
-5. Open **My orders** as a client, or **Orders** as a seller. Check details, search, status/date filters, pagination, cancellation and order-again actions.
-6. As a seller, advance an eligible order through `CONFIRMED`, `SHIPPED`, and `DELIVERED`. Visit `/seller/dashboard` or `/profile` to see sales analytics. As the client, visit `/profile` to see purchasing analytics.
-7. Apply dates containing the order placement date. Check the totals, top products/categories, and monthly chart. Products whose seller fulfillment is still pending, confirmed, shipped or cancelled must not contribute. For mixed-seller orders, verify each seller sees only their own line amounts.
-
-These steps are the manual smoke test. The automated browser suite below covers search, checkout, delivery and analytics; health checks alone do not establish that purchases work.
-
-Quick checks:
+Verify the actual loaded Sonar credentials and permissions:
 
 ```bash
-curl -kfsS -o /dev/null https://localhost:4200/index.html
-curl -kfsS https://localhost:4200/actuator/health
-docker exec jenkins-docker docker ps
+docker cp Jenkinsfile jenkins:/tmp/Buy02.Jenkinsfile
+docker exec -i -e JENKINSFILE_TO_VALIDATE=/tmp/Buy02.Jenkinsfile \
+  jenkins node < jenkins-lab/sonar-init/verify-jenkins.js
 ```
 
-The health response should include `"status":"UP"` when the gateway is healthy.
+Expect **`Jenkinsfile successfully validated`**, seven **`PASS`** lines and
+**`SAFE_ZONE_VERIFY_PASSED`**. JCasC configuration files alone do not establish that
+Jenkins loaded the credentials. After changing secret files, wait for active builds
+to finish and rerun the launcher so Jenkins reloads its startup credentials.
 
-## Repository guide
+## 6. Build and deploy the audit app
 
-| Path | Purpose |
+Open **first-pipeline → Build Now → Console Output**. It checks out this repository's
+remote **main**, not local uncommitted files or a feature branch. No extra Jenkins
+credential entry is needed after the bootstrap and verification above.
+
+The run executes backend/frontend builds and tests, coverage, all seven Sonar
+analyses/gates, Docker image packaging, deployment and container health checks.
+Images use the Jenkins build number. A failing test/gate prevents later deployment.
+Use a manual **Build Now** for audit evidence: scheduled runs skip deployment.
+
+When it finishes, check **Deploy** and **Post-Deployment Health Check** are both
+**SUCCESS**, then open **https://localhost:4300**. The first visit may require
+accepting the local certificate. Confirm catalog requests actually work; container
+health alone is not a complete application test.
+
+```bash
+docker ps --filter name=buy02-staging
+curl -kfsS https://localhost:4300/api/products/search
+```
+
+The app uses separate `buy02-staging-*` containers and database volumes. Its gateway
+is loopback 8445, Kafka loopback 19092 and MongoDB loopback 37017/37019/37020/37021.
+The frontend proxies `/api/**` to the gateway; services communicate through Eureka
+and Kafka. Certificates and Mongo initialization scripts are copied into dedicated
+named volumes so paths inside Jenkins are not mistaken for host filesystem paths.
+
+## 7. Perform the audit demonstration
+
+Use **https://localhost:4300** for all roles. Use separate browser profiles/private
+windows to switch accounts. Start with empty databases on a new PC:
+
+1. **Seller A:** register as Merchant, add a product with an image, price, category
+   and available stock. Edit its price/quantity and verify product ownership.
+2. **Seller B:** register another Merchant and add another product.
+3. **Visitor/client:** search keywords, category, minimum/maximum price sliders,
+   sorting and pagination. Check empty results and invalid price ranges.
+4. **Client:** register, add both products to the cart, increase a quantity, remove
+   and re-add an item. Refresh the page: products and quantities must remain.
+5. Complete **address → review → confirm Pay on Delivery**. Verify totals, order
+   confirmation and cleared cart; open order details and its timeline.
+6. **Seller A:** confirm, ship and deliver only their part. The client should see
+   Seller A delivered and Seller B pending; the whole order must not be Delivered.
+7. **Seller B:** finish their delivery. Check client spending/most-bought/categories
+   and both sellers' revenue/best-selling/units charts. Pending/cancelled items must
+   not count as delivered revenue. Date filters use the order's placement day in UTC.
+8. Make a second order and cancel it while eligible; check stock returns. Try Order
+   again and verify deleted/unavailable/insufficient-stock products are handled.
+9. Archive and restore a finished order. It is hidden only for that account;
+   snapshots, other accounts' visibility and analytics remain intact.
+10. On the seller profile, change **Studio handle**, choose an image, Save, and
+    refresh. Both changes must persist. Test empty/invalid form values too.
+11. Verify another client cannot access the first client's order and a client cannot
+    use seller actions. Check expired/missing authentication, ownership and feedback.
+12. Repeat the key screens on mobile width, and check keyboard navigation, labels,
+    focus and visible validation messages. Inspect browser console/network and
+    backend logs for unexpected errors.
+
+Explain the database design: one MongoDB per business service; product/media owner
+IDs reference users; one cart per customer; order items embed historical product,
+price, category and seller snapshots; seller fulfillments keep separate delivery
+histories. Decimal128 amounts, idempotency, optimistic versions and search/list
+indexes protect checkout and queries. Mongo application users are scoped to their
+databases; the init script creates them only when a database volume is first initialized.
+
+Have the auditor inspect PR reviews, protected main, a green main CI run, Sonar
+results and the latest successful manual Jenkins deployment. Historical PRs #1,
+#3 and #10 have no recorded approval; current required reviews are enforced.
+Wishlist and extra payment methods are optional and are not implemented for the
+mandatory submission. Framework startup advisories must be distinguished from
+application errors; do not claim completely warning-free logs.
+
+## 8. Stop, resume and update safely
+
+Stop or resume the already deployed app without changing its images or data:
+
+```bash
+docker ps -aq --filter label=com.docker.compose.project=buy02-staging | xargs -r docker stop
+docker ps -aq --filter label=com.docker.compose.project=buy02-staging | xargs -r docker start
+```
+
+Starting containers may take time for Eureka registration and gateway routes to
+recover. Check health and the real catalog again. To deploy a reviewed code update:
+
+1. Merge its PR with green required checks and teammate approval.
+2. `git pull --ff-only` on main in the host checkout to update mounted Jenkins config.
+3. After active builds finish, rerun `bash scripts/run-jenkins-host.sh` if configuration
+   or secrets changed, then **first-pipeline → Build Now**.
+
+Keep secret files and Docker volumes between restarts. Changing a password in an
+environment file does not change the user already initialized in Mongo/PostgreSQL.
+Do not use volume deletion or `docker compose down -v` as ordinary restart commands.
+
+## PR workflow and quality evidence
+
+For a new team PR, open **pull-request-checks → Build with Parameters**, enter its
+GitHub number as `PR_NUMBER`, and run it. Include that build link in the PR manually.
+The controller-owned validator accepts same-repository PRs into main from trusted
+team members, pins the exact head and merges current main for the build/tests.
+Fork/untrusted author builds are rejected by this Docker lab. GitHub Actions
+additionally runs unit, integration and browser E2E tests, builds, and isolated
+whole-code Sonar scans. Main requires one approval, an up-to-date branch and green
+**Tests and SonarQube gates** from GitHub Actions. Current configuration is recorded
+in [.ci/main-ruleset.json](.ci/main-ruleset.json).
+
+Jenkins retains main analysis history in the local SonarQube server. GitHub Actions
+creates a disposable SonarQube server per run, so PR scans do not overwrite main.
+Inspect its summary and `quality-<run>-<attempt>` artifact for results, coverage and
+failure screenshots. The gate enforces at least 80% coverage, zero bugs/vulnerabilities/
+code smells, zero new issues, limited new duplication and reviewed security hotspots.
+Frontend additionally enforces 80% in statements, branches, functions and lines.
+
+Recorded SonarQube improvements (rules/gates were not disabled or relaxed):
+
+| Feedback | Improvement |
 | --- | --- |
-| `Jenkinsfile` | CI/CD pipeline definition |
-| `jenkins-lab/compose.yml` | Jenkins, Docker-in-Docker, SonarQube, PostgreSQL |
-| `jenkins-lab/jcasc/jenkins.yaml` | Jenkins Configuration as Code source |
-| `jenkins-lab/docker-entrypoint.sh` | Loads local secrets and prepares Jenkins configuration |
-| `jenkins-lab/sonar-init/bootstrap.py` | Provisions SonarQube projects, tokens, and webhook |
-| `jenkins-lab/jenkins-secrets/` | Local credentials and certificates — **never commit** |
-| `product-service/`, `user-service/`, `media-service/` | Business microservices |
-| `order-service/` | Cart, checkout, order persistence, search and lifecycle APIs |
-| `gateway/`, `discovery/` | API routing and service discovery |
-| `frontend/` | Angular marketplace |
-| `.github/workflows/quality.yml`, `.ci/` | GitHub quality workflow, provisioning tests and review/protection documentation |
+| `java:S1612` in order tests | Replaced a trivial lambda with `StatusChange::status` |
+| `java:S2143` in analytics | Used `java.time`/UTC Instant date boundaries instead of legacy Date |
+| `Web:S6821` on an Angular input named role | Renamed that input to `audience` |
+| `Web:S6845` on non-interactive containers | Removed inappropriate tabindex attributes |
+| `java:S1192` repeated Mongo expressions | Introduced shared operator/field constants |
+| `java:S8924` Mockito test imports | Used the required static-import style without weakening assertions |
 
-## Everyday commands
+Validation snapshot, **2026-11-05**: reviewed PR #30 merged as
+`d56fea2645c3ea3c79cf1c8a8a591bdce4a6f218`; main CI
+[42028792940](https://github.com/AyyoubMh48/buy-02/actions/runs/42028792940) passed.
+[Jenkins #14](http://localhost:8085/job/first-pipeline/14/) passed gates, deployment
+and health checks for that commit. The branding/profile test changes passed 223
+frontend tests, the production build and all eight real-browser flows; the stable
+profile check also passed when the DevTools PUT body was deliberately unavailable.
+These are dated results; use the latest run for later revisions.
 
-Start existing infrastructure:
+## Optional local development and automated tests
 
-```bash
-docker compose -f jenkins-lab/compose.yml up -d --build
-```
-
-This starts the CI infrastructure using existing configuration. If the application has not been deployed, run `first-pipeline` in Jenkins afterwards. Redeploy code changes through the pipeline. The root `docker-compose.yml` expects prebuilt images tagged with `APP_IMAGE_TAG` and Jenkins-managed certificate paths; it is not a standalone build-and-run shortcut.
-
-Check status and logs:
+To build outside Jenkins, also install **Java 21 and Node.js 24.20.0/npm** on the
+host. Maven wrappers download Maven; you do not need a separate Maven install.
 
 ```bash
-docker compose -f jenkins-lab/compose.yml ps
-docker compose -f jenkins-lab/compose.yml logs --tail=100 jenkins sonarqube
-docker exec jenkins-docker docker ps
+java -version
+node --version
+npm --version
+bash scripts/run-local.sh
 ```
 
-After changing local secret files, recreate Jenkins so its entrypoint can reload them:
+This builds a separate local stack at **https://localhost:4200**. Its generated
+configuration/certificates live under `.local/`. Set the three CLOUDINARY_* values
+in `.local/app.env` and rerun the script for local uploads. This is a different
+configuration and database from staging. The script generates secrets only if its
+file is absent. The audit can use staging alone; this path supports development
+and the automated local E2E fixtures.
 
-```bash
-docker compose -f jenkins-lab/compose.yml up -d --force-recreate jenkins
-```
-
-Stop without deleting data:
-
-```bash
-docker compose -f jenkins-lab/compose.yml stop
-```
-
-**Avoid `down -v` for routine troubleshooting:** it removes persistent data such as Jenkins and SonarQube state.
-
-## Troubleshooting
-
-| Symptom | First thing to check |
-| --- | --- |
-| SonarQube Elasticsearch fails to start | Host `vm.max_map_count`, memory, and SonarQube logs |
-| `Number of installations ... 0` | Jenkins **System → SonarQube installations** and actual JCasC source applied |
-| `Not authorized to analyze` / HTTP 401 | Correct project key, matching analysis token, permissions |
-| Quality Gate times out | SonarQube webhook delivery to `http://jenkins:8080/sonarqube-webhook/` |
-| Coverage report missing | `target/site/jacoco/jacoco.xml` or `frontend/coverage/frontend/lcov.info` |
-| Docker image/container not visible on host | Inspect nested daemon with `docker exec jenkins-docker docker ps` |
-| MongoDB/PostgreSQL login fails after password change | Existing database volumes retain initialized credentials |
-| Angular loads but `/api` calls fail during `npm start` | The Angular development server has no API proxy configured; use the deployed HTTPS application for full-stack testing |
-| Latest edits do not appear after a pipeline run | Jenkins checks out its configured remote branch, not your local working directory |
-
-For a full failure, inspect the **first real error** in Jenkins Console Output, not just the final `Finished: FAILURE` line. Never paste tokens or secret-file contents into issue reports.
-
-## Important limitations
-
-- Product persistence and Kafka publication are separate operations; failures can leave product and media state inconsistent.
-- Stock reservation and order persistence span services. Compensation failures require reconciliation; consult the Order Service documentation.
-- Finished orders can be archived and restored separately by each account; snapshots and analytics are preserved. Mixed-seller orders have separate seller delivery progress; historical records without that data use their original status.
-- Analytics support at most 366 days per request and count delivered seller lines by order placement date, not delivery date. Revenue is inferred from delivery status; there is no payment collection ledger.
-- The GitHub webhook needs an externally reachable Jenkins URL; `localhost:8085` is not reachable by GitHub.
-- SonarQube Community Build does not provide native PR/branch analysis. The [GitHub quality workflow](.ci/README.md) performs isolated whole-code scans on every branch and PR without overwriting the main dashboard.
-- Bootstrap assigns the Buy01 Quality Gate: at least 80% overall/new-code coverage, zero overall bugs/vulnerabilities and zero new issues, at most 3% new duplication, and all new security hotspots reviewed. Frontend coverage additionally enforces 80% in four metrics.
-- The included self-signed certificates and Docker-in-Docker setup are intended for local development/lab use.
-- Rollback is conditional on a previous healthy release and is not a substitute for database migration planning.
-
-## Quality checks and reviews
-
-See [.ci/README.md](.ci/README.md) for automatic scans, retained reports and the active `main` ruleset. Merging requires an approved review, an up-to-date branch and the green `Tests and SonarQube gates` check from GitHub Actions.
-
-## Running checks locally
-
-Use a JDK compatible with the build (CI uses Java 21), Node.js (CI uses `24.20.0`) and npm. Maven wrappers are included. These commands run checks; they do not start the full application.
-
-Backend tests, packages and JaCoCo reports, from the repository root:
+Backend unit/integration tests (Docker must be running for disposable MongoDB):
 
 ```bash
 for service in product-service user-service media-service order-service gateway discovery; do
-  (cd "$service" && bash ./mvnw -B clean verify) || break
+  (cd "$service" && bash ./mvnw -B clean verify) || exit 1
 done
 ```
 
-Frontend tests and production build:
+Frontend coverage, build and browser suite:
 
 ```bash
 cd frontend
 npm ci
-CI=true npm run test:coverage
+npm run test:coverage
 npm run build
+npx puppeteer browsers install chrome
+export PUPPETEER_EXECUTABLE_PATH="$(node --input-type=module -e 'import puppeteer from "puppeteer"; console.log(await puppeteer.executablePath())')"
+cd ..
+bash scripts/run-local.sh --skip-build
+(cd frontend && npm run test:e2e)
 ```
 
-Individual tests may need environment variables or infrastructure; inspect the first failure and the relevant service configuration. Jenkins supplies the configured application credentials during its build.
+The browser suite is fixed to the isolated **buy02-local** stack on 4200 and refuses
+fixture writes to other Compose projects. Its eight scenarios cover search/sliders,
+checkout, mixed sellers, cancellation, analytics/mobile dates, archive, API errors
+and profile picker/save persistence. It creates random accounts/product fixtures
+and removes its own records; product fixtures bypass Cloudinary. Verify real image
+upload separately through the audit flow. Failures save screenshots under ignored
+`frontend/e2e/artifacts/`. CI sets `E2E_NO_SANDBOX=1` for its disposable runner;
+use that option locally only if Chrome's sandbox cannot run in your environment.
 
-`npm start` starts Angular alone at `http://localhost:4200`; there is currently no development API proxy. It also conflicts with the deployed frontend's host port. For full-stack manual testing, use the Docker/Jenkins deployment at **https://localhost:4200**. Real-browser end-to-end tests are available through `npm run test:e2e`, as described below.
-
-## Browser end-to-end tests
-
-Start the local application from this checkout with `bash scripts/run-local.sh`, then:
+Configuration/helper checks:
 
 ```bash
-cd frontend
-npm run test:e2e
+python3 -m unittest discover -s jenkins-lab/sonar-init -p 'test_*.py'
+python3 -m unittest discover -s .ci -p 'test_*.py'
+bash -n scripts/run-local.sh scripts/run-jenkins-host.sh jenkins-lab/docker-entrypoint.sh
 ```
 
-The suite uses the existing Puppeteer dependency and Node's test runner. It selects `PUPPETEER_EXECUTABLE_PATH` when set, then `/usr/bin/google-chrome` if installed, otherwise Puppeteer's installed browser. If needed, install Chrome with `npx puppeteer browsers install chrome`. Environments where Chrome's sandbox cannot run can explicitly use `E2E_NO_SANDBOX=1 npm run test:e2e`; CI sets this for its disposable runner.
+## API and security reference
 
-Tests run against **https://localhost:4200**, require the `buy02-local-*` containers, and refuse fixture writes to a different Compose project. They register fresh browser accounts, insert uniquely named product fixtures into the local Product MongoDB, and remove their exact account/product/order/cart/receipt records afterwards. Production data and Cloudinary are not used. Product fixtures bypass image upload; Cloudinary upload behavior is covered separately by storage-error tests and manual integration testing.
+Browser requests use `/api` through Nginx and the gateway. Public catalog reads need
+no login; protected requests use the JWT from login. Mutations also require the
+CSRF cookie and `X-XSRF-TOKEN` obtained from `GET /api/csrf`; Angular handles both.
+The gateway strips caller-supplied X-User-* headers and forwards verified identity.
+Backend services enforce roles and ownership; only the gateway is the public API.
+Authentication endpoints are necessarily available before login.
 
-Five scenarios cover real browser requests through Angular → Nginx → Gateway → services → MongoDB:
-
-- Keyword/category/price/stock filters, sorting, pagination reset, invalid ranges and empty results.
-- Mixed-seller cart, quantity edits, Pay on Delivery checkout and cart clearing; pending orders contribute zero analytics.
-- Seller confirmation/shipping/delivery, customer totals, seller-only line totals, and ownership/role restrictions.
-- Customer cancellation of a second order without changing delivered analytics.
-- Inclusive placement-day filters, excluded dates, invalid date ranges and dashboard use at mobile width.
-
-Tests run serially because later steps use the order created by checkout. Failures save screenshots under ignored `frontend/e2e/artifacts/`; CI retains these with its quality artifacts. GitHub Actions installs Puppeteer's matching Chrome build, starts a fresh local stack, runs the browser suite, and stops it before starting SonarQube to keep memory usage bounded. The app remains running after a local test run.
-
-Cloudinary storage failures now return HTTP 502 with a controlled message instead of exposing provider errors as unhandled 500 responses. Angular displays that message through its existing upload error handling.
-
-## Cart and checkout API
-
-All endpoints below require an authenticated **CLIENT**. Cart identity comes from the authenticated user, not a user ID supplied by the caller.
-
-| Method | Public path | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/cart` | Read cart with current product information and totals |
-| `POST` | `/api/cart/items` | Add `{ "productId": "...", "quantity": 1 }` |
-| `PUT` | `/api/cart/items/{productId}` | Set quantity with `{ "quantity": 2 }` |
-| `DELETE` | `/api/cart/items/{productId}` | Remove an item |
-| `DELETE` | `/api/cart` | Clear cart |
-| `POST` | `/api/cart/review` | Validate availability and obtain a review token |
-| `POST` | `/api/cart/checkout` | Submit delivery address and review token using an `Idempotency-Key` header |
-
-The cart supports up to 50 distinct products and quantities from 1 to 100 per product, subject to stock checks. Checkout uses cash on delivery. On uncertain failures, retry the same request with the same key; pending checkout data is persisted for recovery.
-
-Mutating gateway requests also require CSRF protection: obtain the token from `GET /api/csrf`, retain its cookie, and send the token in `X-XSRF-TOKEN`. The Angular interceptor handles this automatically. Protected requests use `Authorization: Bearer <token>`.
-
-## Orders API
-
-| Method | Public path | Purpose |
-| --- | --- | --- |
-| `POST` | `/api/orders` | Create a client order; requires `Idempotency-Key` |
-| `GET` | `/api/orders/my` | List the authenticated customer's orders |
-| `GET` | `/api/orders/seller` | List orders containing the authenticated seller's products |
-| `GET` | `/api/orders/{id}` | Read an owned customer order or seller-related order |
-| `PATCH` | `/api/orders/{id}/cancel` | Customer cancellation when the current state permits it |
-| `POST` | `/api/orders/{id}/reorder` | Return prior order items for a repeat purchase |
-| `PATCH` | `/api/orders/{id}/status` | Related seller updates status with optional note |
-
-List filters: `status`, ISO dates `from`/`to` (inclusive), and `q` (order ID or product-name text). Lists also accept `page` and `size` and return paginated responses. Responses contain product/price/category snapshots, totals and status history. Seller responses restrict items and totals to the seller's products.
-
-Personal list visibility: `PATCH /api/orders/{id}/archive` accepts
-`{"archived": true}` to archive or `{"archived": false}` to restore. Customers can
-archive terminal orders (`DELIVERED`, `CANCELLED`, `COMPLETED`); sellers can archive
-their own delivered/cancelled fulfillment even if other sellers are still working.
-The default order lists exclude your archived orders; add `archived=true` to list
-only your archived orders, with the same search, date, status and pagination options.
-Order details remain accessible to the same authorized accounts. Archive/restore
-never changes stock, statuses, totals or analytics. In Angular, open order details
-and choose **Archive order**, or select **Archived orders** in the order list to
-find and restore an archived order.
-
-Allowed transitions: `PENDING → CONFIRMED → SHIPPED → DELIVERED`, with cancellation allowed from `PENDING` or `CONFIRMED`. `DELIVERED` and `CANCELLED` are terminal states. Each seller has a separate fulfillment and timeline. Customer status is `IN_PROGRESS` when parts differ, `DELIVERED` only when all parts are delivered, and `COMPLETED` when delivered and cancelled parts finish together. Seller responses and filters use only their own fulfillment.
-
-The Buy02 subject calls for consistent errors shaped as `{ code, message, details }`. Existing services use different error schemas; alignment remains required. Analytics endpoints are documented below.
-
-## Product categories
-
-Product create/update requests accept an optional `category` string of at most 80 characters. Categories are trimmed and stored in lowercase (for example, `" Furniture "` becomes `"furniture"`). New products without a category, and existing uncategorized products in API responses, use `"uncategorized"`. An update that omits `category` preserves the existing value. Existing MongoDB documents do not require a migration for this change.
-
-Sellers can edit the category in the product form. Category filtering is supported by the product search endpoint below.
-
-## Product search API
-
-`GET /api/products/search` is a public, read-only endpoint. The existing product list and product-by-ID endpoints retain their response formats for cart/order compatibility.
-
-Example:
-
-```http
-GET /api/products/search?q=phone&category=electronics&minPrice=500&maxPrice=3000&inStock=true&sort=price-asc&page=0&size=12
-```
-
-| Parameter | Behavior |
+| Endpoint group | Main operations |
 | --- | --- |
-| `q` | Optional keywords in name/description, up to 200 characters. MongoDB text search matches words, not arbitrary substrings. The text index uses language `none` (no stemming or stop-word removal). Multiple terms use MongoDB text-search semantics, including OR by default. |
-| `category` | Optional exact category, trimmed and lowercased. `uncategorized` includes legacy missing/blank values. |
-| `minPrice`, `maxPrice` | Optional inclusive bounds, nonnegative with up to 12 integer digits and 2 decimal places. Minimum must not exceed maximum. |
-| `inStock` | `true` limits results to positive stock; omitted/`false` includes all stock levels. |
-| `sort` | `newest` (default), `featured` (alias for newest), `price-asc`, `price-desc`, or `name-asc`. All include an ID tie-breaker. Name sorting uses MongoDB's default binary ordering. |
-| `page`, `size` | Zero-based page (0–10000, default 0), page size (1–100, default 12). |
+| `/api/auth/register`, `/api/auth/login` | Account creation/login |
+| `/api/me` | GET/PUT own profile; seller avatar uses owned media |
+| `/api/products/search` | GET keywords/category/minPrice/maxPrice/inStock/sort/page/size |
+| `/api/products` | Seller create/edit/delete; own-product checks |
+| `/api/media/images` | Seller image upload, maximum 2 MB; owned deletion |
+| `/api/cart` | Client read/clear; `/items` add and `/items/{id}` update/remove |
+| `/api/cart/review`, `/api/cart/checkout` | Review and confirm with delivery address and Idempotency-Key |
+| `/api/orders/my`, `/api/orders/seller` | Paginated role-scoped lists with status/from/to/q filters |
+| `/api/orders/{id}` | Owned details; `/cancel`, `/reorder`, `/status`, `/archive` actions |
+| `/api/orders/analytics/me`, `/api/orders/analytics/seller` | Date-filtered customer/seller reports |
 
-The response contains `content` (product responses), `totalElements`, `totalPages`, `page`, and `size`. Counts apply to all matches before pagination. No matches produce an empty list and zero total pages; a page beyond the last page is empty and retains the matching totals. Invalid filters return HTTP 400 using the existing validation error response.
+Finished-order removal is a personal archive, preserving snapshots and analytics.
+Reorder adds available products to the cart for review; it does not silently place
+a new order. Only delivered seller lines count in analytics. Date ranges include
+both placement-day endpoints in UTC; seller reports never include another seller's
+items. A mixed order stays In progress until its parts finish. All delivered becomes
+Delivered; all cancelled becomes Cancelled; a terminal mixture becomes Completed.
 
-Spring Data creates the combined name/description text index and category/price, price, and creation-date indexes on startup when `spring.data.mongodb.auto-index-creation=true` (already configured). MongoDB must be available and its application user must have permission to create indexes. These indexes support the basic search paths; query plans for combined filters/sorts should be checked against representative data. The Angular catalog uses this endpoint for search, category/price/stock filters, sorting, and pagination (12, 24, or 48 items per page). Filter changes reset the page and wait 300 ms before searching; newer changes cancel pending or in-flight requests. Invalid price ranges are shown inline and do not send requests. The existing quick view and add-to-cart actions remain available.
+Application errors follow `{ "code": "VALIDATION_FAILED", "message": "Invalid input data", "details": { "field": "Reason" } }`.
+`details` is an object, including `{}` when no field detail applies. Typical statuses
+are 400 validation, 401 authentication, 403 permissions/CSRF, 404 missing resource,
+409 conflict, 502 provider failure and 503 unavailable dependency. Unexpected 500s
+hide implementation details. Error responses exclude credentials, rejected secrets
+and stack traces. Angular renders field details inline and safe general messages.
 
-## Orders
+## Troubleshooting
 
-The Order Service handles the cart, Pay on Delivery checkout and orders; the Angular app has customer and seller order pages.
-
-| Area | Summary |
+| Symptom | Check/action |
 | --- | --- |
-| Customer | cart, checkout, order history with search, status and date filters, order details with a status timeline, cancel (pending or confirmed orders), order again |
-| Seller | orders containing their products (only their own lines and totals), status updates with an optional note |
-| Statuses | `PENDING` → `CONFIRMED` → `SHIPPED` → `DELIVERED`, or `CANCELLED` before shipping; invalid changes return 409 |
-| Safety | product and price snapshots, exact decimal amounts, one order per `Idempotency-Key`, stock reserved in Product Service before saving, optimistic locking against concurrent updates |
-| API | `/api/orders/**` and `/api/cart/**` through the gateway |
+| Docker permission denied | Fix your user's daemon/socket access; rerun `docker info` |
+| SonarQube exits or stays unhealthy | Host limits, free memory/disk, then `docker compose --env-file jenkins-lab/.env -p jenkins-lab -f jenkins-lab/compose.yml logs --tail=80 sonarqube sonar-db`; redact secrets before sharing |
+| Missing Sonar credentials/server in Jenkins | Run bootstrap, then recreate Jenkins with the launcher and run the verifier |
+| Jenkins Docker/Testcontainers cannot connect | Check `.local/jenkins-host.env`; use a reachable host IP; rerun the launcher |
+| Upload fails | Configure real Cloudinary values in the correct staging/local file, reload Jenkins secrets and redeploy for staging |
+| Gateway fails to read PKCS12 | Keystore password must match SERVER_SSL_KEY_STORE_PASSWORD; preserve or regenerate a matching pair |
+| App health green but API temporarily fails | Allow Eureka/gateway registration caches to refresh; check real catalog and authenticated order requests |
+| Mongo/PostgreSQL authentication fails after editing passwords | Restore initialized credentials; changing env files does not migrate existing DB users |
+| UI still shows old branding or behavior | Confirm reviewed main was deployed by Jenkins, then refresh the browser |
+| GitHub check queued | It has not started a runner; inspect job steps before assuming a code failure |
 
-Details:
-
-- [order-service/README.md](order-service/README.md): architecture, security, concepts, data model, API, flows, configuration, tests, limitations, and the analytics contract.
-- [frontend/src/app/features/orders/README.md](frontend/src/app/features/orders/README.md): the order pages, their code and tests.
-
-Improvements from SonarQube during this work:
-
-| Rule | Finding | Fix |
-| --- | --- | --- |
-| `java:S5778` | `assertThatThrownBy` lambdas built their arguments inside the lambda, so a test could pass for the wrong exception | arguments are built before the assertion |
-| `Web:S6819` | the cancel confirmation used `role="group"` | replaced by a native `<fieldset>` with a `<legend>` |
-
-## Profile analytics
-
-Customer purchasing analytics appear at `/profile`. Seller sales analytics appear at both `/profile` and `/seller/dashboard`. Both show summary cards, top-five products/categories and monthly charts with readable table values. Date filters, loading/error/retry states and empty results are supported.
-
-| Method | Public path | Access |
-| --- | --- | --- |
-| `GET` | `/api/orders/analytics/me?from=2026-01-01&to=2026-12-31` | Authenticated CLIENT, own orders |
-| `GET` | `/api/orders/analytics/seller?from=2026-01-01&to=2026-12-31` | Authenticated SELLER, own items only |
-
-Both endpoints return `from`, `to`, `countedStatus`, `totalAmount`, `orderCount`, `totalUnits`, `products`, `categories`, and `months`. `totalAmount` means customer spending or seller revenue depending on the endpoint. No caller-supplied user/seller ID is accepted as the analytics identity.
-
-Dates are inclusive UTC order-placement dates. With no dates, the range starts on the first day of the month 11 months before today and ends today. Either bound may be omitted; an omitted `to` means today and an omitted `from` is derived from the effective end date. Ranges may include at most 366 days and must stay between years 1970 and 9998. Invalid dates/ranges return 400; absent authentication returns 401; wrong roles return 403.
-
-Only delivered seller lines count. An order with at least one delivered line counts once in the relevant customer or seller report. Products/categories are ranked by units, amount, then ID/category for deterministic ties; lists contain at most five entries. Product names and categories come from historical snapshots. Monthly totals include zero-filled months, count distinct orders rather than order lines, and use only the authenticated seller's lines for seller reports. Amounts are summed as MongoDB Decimal128/Java BigDecimal; the UI follows the existing order pages' USD display convention.
-
-See [order-service/README.md](order-service/README.md#14-analytics-contract) for the full response contract and tests.
-
-## Project status
-
-The setup and pipeline above describe the **intended reproducible workflow**. Verify the live Jenkins build, quality-gate results, deployment, and application functionality before describing a release as successful.
-
-
-
-The remaining team tasks and acceptance checks are tracked in [docs/FINISHING-TASKS.md](docs/FINISHING-TASKS.md).
-
-Application errors follow the shared [API error contract](docs/API-ERRORS.md): `code`, `message`, and field-level `details`.
+Legacy `jenkins-lab/compose.yml` also supports the original privileged DinD lab;
+`sonar-lab/compose.yml` is a compatibility include. The primary steps above use the
+host-daemon controller file explicitly. Preserve legacy named volumes when updating
+an existing installation; a new PC should follow the fresh setup without importing
+other people's passwords or using reset/delete-volume commands.
