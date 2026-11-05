@@ -1,22 +1,22 @@
-# Buy02 — run and audit the project
+# Buy02
 
 Buy02 is a Spring Boot microservices and Angular marketplace: products/images,
 search and price sliders, shopping cart, Pay on Delivery, orders and customer/seller
-analytics. This README is the single setup, testing and audit guide.
+analytics.
 
-**On a new PC, follow steps 1–8 below in order.** Commands use **Bash on Linux**
+**On a new PC, follow steps 1–7 below in order.** Commands use **Bash on Linux**
 from the repository root. They configure the existing host-Docker Jenkins setup;
 you do not need Docker-in-Docker. Windows/macOS host setup is not covered here.
 
 | What you want | URL after startup |
 | --- | --- |
-| Audit/staging app built by Jenkins | **https://localhost:4300** |
+| Staging app built by Jenkins | **https://localhost:4300** |
 | Jenkins | **http://localhost:8085** |
 | SonarQube | **http://localhost:9000** |
 | Optional local development app | https://localhost:4200 |
 
-Port 4300 separates staging from the optional development app on 4200. You do not
-need to run both for the audit. A fresh PC starts with empty application databases;
+Port 4300 is used for staging; the optional development app uses 4200.
+A fresh PC starts with empty application databases;
 create your seller/client accounts through the website. Secrets and existing
 application data are not included in a Git clone.
 
@@ -158,7 +158,7 @@ chmod 600 jenkins-lab/jenkins-secrets/*
 ```
 
 These are self-signed local certificates. Accept/trust the localhost certificate
-in your audit browser. On an existing installation, keep its certificates and
+in your browser. On an existing installation, keep its certificates and
 matching password rather than rerunning fresh-install steps.
 
 ## 4. Start SonarQube and create its token
@@ -229,7 +229,7 @@ Expect **`Jenkinsfile successfully validated`**, seven **`PASS`** lines and
 Jenkins loaded the credentials. After changing secret files, wait for active builds
 to finish and rerun the launcher so Jenkins reloads its startup credentials.
 
-## 6. Build and deploy the audit app
+## 6. Build and deploy the application
 
 Open **first-pipeline → Build Now → Console Output**. It checks out this repository's
 remote **main**, not local uncommitted files or a feature branch. No extra Jenkins
@@ -238,12 +238,16 @@ credential entry is needed after the bootstrap and verification above.
 The run executes backend/frontend builds and tests, coverage, all seven Sonar
 analyses/gates, Docker image packaging, deployment and container health checks.
 Images use the Jenkins build number. A failing test/gate prevents later deployment.
-Use a manual **Build Now** for audit evidence: scheduled runs skip deployment.
+Use **Build Now** to deploy the application. Scheduled runs skip deployment.
 
 When it finishes, check **Deploy** and **Post-Deployment Health Check** are both
 **SUCCESS**, then open **https://localhost:4300**. The first visit may require
 accepting the local certificate. Confirm catalog requests actually work; container
-health alone is not a complete application test.
+health alone does not verify API access.
+
+Register a **Merchant** account to add products with images, or a **Client** account
+to browse and place Pay on Delivery orders. Use the profile page to update account
+details and view analytics.
 
 ```bash
 docker ps --filter name=buy02-staging
@@ -256,52 +260,7 @@ The frontend proxies `/api/**` to the gateway; services communicate through Eure
 and Kafka. Certificates and Mongo initialization scripts are copied into dedicated
 named volumes so paths inside Jenkins are not mistaken for host filesystem paths.
 
-## 7. Perform the audit demonstration
-
-Use **https://localhost:4300** for all roles. Use separate browser profiles/private
-windows to switch accounts. Start with empty databases on a new PC:
-
-1. **Seller A:** register as Merchant, add a product with an image, price, category
-   and available stock. Edit its price/quantity and verify product ownership.
-2. **Seller B:** register another Merchant and add another product.
-3. **Visitor/client:** search keywords, category, minimum/maximum price sliders,
-   sorting and pagination. Check empty results and invalid price ranges.
-4. **Client:** register, add both products to the cart, increase a quantity, remove
-   and re-add an item. Refresh the page: products and quantities must remain.
-5. Complete **address → review → confirm Pay on Delivery**. Verify totals, order
-   confirmation and cleared cart; open order details and its timeline.
-6. **Seller A:** confirm, ship and deliver only their part. The client should see
-   Seller A delivered and Seller B pending; the whole order must not be Delivered.
-7. **Seller B:** finish their delivery. Check client spending/most-bought/categories
-   and both sellers' revenue/best-selling/units charts. Pending/cancelled items must
-   not count as delivered revenue. Date filters use the order's placement day in UTC.
-8. Make a second order and cancel it while eligible; check stock returns. Try Order
-   again and verify deleted/unavailable/insufficient-stock products are handled.
-9. Archive and restore a finished order. It is hidden only for that account;
-   snapshots, other accounts' visibility and analytics remain intact.
-10. On the seller profile, change **Studio handle**, choose an image, Save, and
-    refresh. Both changes must persist. Test empty/invalid form values too.
-11. Verify another client cannot access the first client's order and a client cannot
-    use seller actions. Check expired/missing authentication, ownership and feedback.
-12. Repeat the key screens on mobile width, and check keyboard navigation, labels,
-    focus and visible validation messages. Inspect browser console/network and
-    backend logs for unexpected errors.
-
-Explain the database design: one MongoDB per business service; product/media owner
-IDs reference users; one cart per customer; order items embed historical product,
-price, category and seller snapshots; seller fulfillments keep separate delivery
-histories. Decimal128 amounts, idempotency, optimistic versions and search/list
-indexes protect checkout and queries. Mongo application users are scoped to their
-databases; the init script creates them only when a database volume is first initialized.
-
-Have the auditor inspect PR reviews, protected main, a green main CI run, Sonar
-results and the latest successful manual Jenkins deployment. Historical PRs #1,
-#3 and #10 have no recorded approval; current required reviews are enforced.
-Wishlist and extra payment methods are optional and are not implemented for the
-mandatory submission. Framework startup advisories must be distinguished from
-application errors; do not claim completely warning-free logs.
-
-## 8. Stop, resume and update safely
+## 7. Stop, restart and update
 
 Stop or resume the already deployed app without changing its images or data:
 
@@ -322,7 +281,7 @@ Keep secret files and Docker volumes between restarts. Changing a password in an
 environment file does not change the user already initialized in Mongo/PostgreSQL.
 Do not use volume deletion or `docker compose down -v` as ordinary restart commands.
 
-## PR workflow and quality evidence
+## Development workflow and code quality
 
 For a new team PR, open **pull-request-checks → Build with Parameters**, enter its
 GitHub number as `PR_NUMBER`, and run it. Include that build link in the PR manually.
@@ -341,7 +300,7 @@ failure screenshots. The gate enforces at least 80% coverage, zero bugs/vulnerab
 code smells, zero new issues, limited new duplication and reviewed security hotspots.
 Frontend additionally enforces 80% in statements, branches, functions and lines.
 
-Recorded SonarQube improvements (rules/gates were not disabled or relaxed):
+SonarQube improvements:
 
 | Feedback | Improvement |
 | --- | --- |
@@ -351,15 +310,6 @@ Recorded SonarQube improvements (rules/gates were not disabled or relaxed):
 | `Web:S6845` on non-interactive containers | Removed inappropriate tabindex attributes |
 | `java:S1192` repeated Mongo expressions | Introduced shared operator/field constants |
 | `java:S8924` Mockito test imports | Used the required static-import style without weakening assertions |
-
-Validation snapshot, **2026-11-05**: reviewed PR #30 merged as
-`d56fea2645c3ea3c79cf1c8a8a591bdce4a6f218`; main CI
-[42028792940](https://github.com/AyyoubMh48/buy-02/actions/runs/42028792940) passed.
-[Jenkins #14](http://localhost:8085/job/first-pipeline/14/) passed gates, deployment
-and health checks for that commit. The branding/profile test changes passed 223
-frontend tests, the production build and all eight real-browser flows; the stable
-profile check also passed when the DevTools PUT body was deliberately unavailable.
-These are dated results; use the latest run for later revisions.
 
 ## Optional local development and automated tests
 
@@ -377,8 +327,7 @@ This builds a separate local stack at **https://localhost:4200**. Its generated
 configuration/certificates live under `.local/`. Set the three CLOUDINARY_* values
 in `.local/app.env` and rerun the script for local uploads. This is a different
 configuration and database from staging. The script generates secrets only if its
-file is absent. The audit can use staging alone; this path supports development
-and the automated local E2E fixtures.
+file is absent. This path supports development and the automated local E2E fixtures.
 
 Backend unit/integration tests (Docker must be running for disposable MongoDB):
 
@@ -406,8 +355,8 @@ The browser suite is fixed to the isolated **buy02-local** stack on 4200 and ref
 fixture writes to other Compose projects. Its eight scenarios cover search/sliders,
 checkout, mixed sellers, cancellation, analytics/mobile dates, archive, API errors
 and profile picker/save persistence. It creates random accounts/product fixtures
-and removes its own records; product fixtures bypass Cloudinary. Verify real image
-upload separately through the audit flow. Failures save screenshots under ignored
+and removes its own records; product fixtures bypass Cloudinary. For real image
+uploads, configure Cloudinary and use the seller product form. Failures save screenshots under ignored
 `frontend/e2e/artifacts/`. CI sets `E2E_NO_SANDBOX=1` for its disposable runner;
 use that option locally only if Chrome's sandbox cannot run in your environment.
 
