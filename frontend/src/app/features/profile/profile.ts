@@ -55,7 +55,7 @@ export class Profile implements OnInit {
   }
 
   getDisplayName(user: User): string {
-    return user.fullName || user.username || 'BUY01 member';
+    return user.fullName || user.username || 'BUY02 member';
   }
 
   getInitials(user: User): string {

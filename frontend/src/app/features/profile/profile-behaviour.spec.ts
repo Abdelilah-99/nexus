@@ -68,7 +68,7 @@ describe('Profile behaviour', () => {
   it('derives display names', () => {
     expect(component.getDisplayName({ ...user, fullName: 'Ada L' })).toBe('Ada L');
     expect(component.getDisplayName(user)).toBe('ada');
-    expect(component.getDisplayName({ ...user, username: undefined })).toBe('BUY01 member');
+    expect(component.getDisplayName({ ...user, username: undefined })).toBe('BUY02 member');
   });
 
   it('derives initials', () => {
