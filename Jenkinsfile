@@ -246,7 +246,7 @@ pipeline {
             steps {
                 dir('product-service') {
                     sh '''
-                        docker build \\
+                        docker build --load \\
                             -t product-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -258,7 +258,7 @@ pipeline {
             steps {
                 dir('user-service') {
                     sh '''
-                        docker build \\
+                        docker build --load \\
                             -t user-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -270,7 +270,7 @@ pipeline {
             steps {
                 dir('media-service') {
                     sh '''
-                        docker build \\
+                        docker build --load \\
                             -t media-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -282,7 +282,7 @@ pipeline {
             steps {
                 dir('order-service') {
                     sh '''
-                        docker build \\
+                        docker build --load \\
                             -t order-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -294,7 +294,7 @@ pipeline {
             steps {
                 dir('gateway') {
                     sh '''
-                        docker build \\
+                        docker build --load \\
                             -t gateway:${BUILD_NUMBER} \\
                             .
                     '''
@@ -306,7 +306,7 @@ pipeline {
             steps {
                 dir('discovery') {
                     sh '''
-                        docker build \\
+                        docker build --load \\
                             -t discovery:${BUILD_NUMBER} \\
                             .
                     '''
@@ -318,7 +318,7 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh '''
-                        docker build \\
+                        docker build --load \\
                             -t frontend:${BUILD_NUMBER} \\
                             .
                     '''
