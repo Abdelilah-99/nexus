@@ -4,6 +4,8 @@ import { provideRouter } from '@angular/router';
 import { UpdateProfileDialog } from './update-profile-dialog';
 import { MediaService } from '../../../core/services/media';
 import { User } from '../../../core/models/user';
+import { ProfileService } from '../../../core/services/profile';
+import { of } from 'rxjs';
 
 describe('UpdateProfileDialog', () => {
   let component: UpdateProfileDialog;
@@ -75,6 +77,40 @@ describe('UpdateProfileDialog', () => {
     component.onAvatarSelect(fakeEvent);
 
     expect(uploadSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not cancel clicks on the image picker or handle input', () => {
+    component.user = sellerUser;
+    fixture.detectChanges();
+    const closed = vi.spyOn(component.closed, 'emit');
+    for (const id of ['#profileAvatar', '#profileUsername']) {
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      fixture.nativeElement.querySelector(id).dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    }
+    expect(closed).not.toHaveBeenCalled();
+  });
+
+  it('allows native Save submission after editing the handle', () => {
+    component.user = sellerUser;
+    const update = vi.spyOn(TestBed.inject(ProfileService), 'updateProfile')
+      .mockReturnValue(of({ ...sellerUser, username: 'new_studio' }));
+    fixture.detectChanges();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('#profileUsername');
+    input.value = 'new_studio';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    fixture.nativeElement.querySelector('button[type="submit"]').click();
+    expect(update).toHaveBeenCalledWith({ username: 'new_studio' });
+  });
+
+  it('closes only when the backdrop itself is clicked', () => {
+    component.user = sellerUser;
+    fixture.detectChanges();
+    const closed = vi.spyOn(component.closed, 'emit');
+    fixture.nativeElement.querySelector('.buy-modal-content').click();
+    expect(closed).not.toHaveBeenCalled();
+    fixture.nativeElement.querySelector('dialog').click();
+    expect(closed).toHaveBeenCalledOnce();
   });
 });
 
