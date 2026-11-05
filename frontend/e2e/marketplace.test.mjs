@@ -283,8 +283,11 @@ describe('Real marketplace browser flows', { concurrency: false, timeout: 300000
       clickText(page, 'button[type="submit"]', 'Save modifications'),
     ]);
     assert.equal(response.status(), 200);
-    assert.equal((await response.json()).username, name);
     await page.waitForSelector('app-update-profile-dialog', { hidden: true });
+    // Chrome may discard the PUT response body before DevTools reads it.
+    const storedProfile = await api(page, '/me');
+    assert.equal(storedProfile.status, 200);
+    assert.equal(storedProfile.body.username, name);
     await page.reload({ waitUntil: 'networkidle0' });
     assert.equal(await page.$eval('.maker-name', element => element.textContent.trim()), name);
   });
