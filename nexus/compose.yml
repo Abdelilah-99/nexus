@@ -1,0 +1,46 @@
+# Nexus Repository Manager for the Buy02 artifact pipeline.
+#
+#   docker compose -f nexus/compose.yml up -d
+#
+# The container runs as the image's dedicated "nexus" user (uid/gid 200), never root.
+name: nexus
+
+services:
+  nexus:
+    # sonatype/nexus3 3.98.1-01
+    image: sonatype/nexus3@sha256:91a9af44af777c353db11a5ee73850c7eb24b03c997ff4cc62a3500ad38a1332
+    container_name: nexus
+    hostname: nexus
+    user: "200:200"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    environment:
+      INSTALL4J_ADD_VM_PARAMS: >-
+        -Xms1g -Xmx1g -XX:MaxDirectMemorySize=1g
+        -Djava.util.prefs.userRoot=/nexus-data/javaprefs
+    ports:
+      - "8081:8081"   # web UI, REST API and Maven repositories
+      - "8082:8082"   # Docker hosted repository (push)
+      - "8083:8083"   # Docker group repository (pull: hosted + Docker Hub proxy)
+    volumes:
+      - nexus-data:/nexus-data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/service/rest/v1/status > /dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 90s
+    networks:
+      - nexus-network
+
+networks:
+  # Named so the Jenkins lab can join it and reach Nexus as http://nexus:8081.
+  nexus-network:
+    name: nexus-network
+
+volumes:
+  nexus-data:
+    name: nexus-data
