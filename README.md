@@ -13,7 +13,11 @@ you do not need Docker-in-Docker. Windows/macOS host setup is not covered here.
 | Staging app built by Jenkins | **https://localhost:4300** |
 | Jenkins | **http://localhost:8085** |
 | SonarQube | **http://localhost:9000** |
+| Nexus Repository Manager | **http://localhost:8081** |
 | Optional local development app | https://localhost:4200 |
+
+Build artifacts and Docker images are stored in Nexus: see
+[nexus/README.md](nexus/README.md) for its setup, the Maven/Docker integration and the CI publishing flow.
 
 Port 4300 is used for staging; the optional development app uses 4200.
 A fresh PC starts with empty application databases;

@@ -27,3 +27,6 @@ jenkins-secrets/
 *.iml
 /docs
 Task*
+
+# Root reactor build output
+/target/
