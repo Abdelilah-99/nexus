@@ -1,4 +1,5 @@
-FROM eclipse-temurin:17-jre-alpine
+ARG BASE_REGISTRY=docker.io/library
+FROM ${BASE_REGISTRY}/eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 

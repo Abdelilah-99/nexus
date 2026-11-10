@@ -1,4 +1,5 @@
-FROM nginx:alpine
+ARG BASE_REGISTRY=docker.io/library
+FROM ${BASE_REGISTRY}/nginx:alpine
 
 COPY dist/frontend/browser /usr/share/nginx/html
 
