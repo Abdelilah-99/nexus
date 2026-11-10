@@ -36,6 +36,9 @@ services:
       USER_MONGO_PORT: "37017"
       ORDER_MONGO_PORT: "37021"
       CORS_ALLOWED_ORIGINS: http://localhost:4300,https://localhost:4300
+      # The host daemon reaches the Nexus Docker connectors through their published ports
+      NEXUS_DOCKER_PUSH: localhost:8082
+      NEXUS_DOCKER_PULL: localhost:8083
     volumes:
       - jenkins_home:/var/jenkins_home
       - ${JENKINS_DOCKER_SOCKET_HOST}:/var/run/docker.sock
@@ -43,6 +46,7 @@ services:
       - ./jenkins-secrets:/run/secrets:ro
     networks:
       - jenkins-network
+      - nexus-network
     healthcheck:
       test: [CMD-SHELL, 'curl -fsS http://localhost:8080/login > /dev/null']
       interval: 10s
@@ -57,3 +61,6 @@ networks:
   jenkins-network:
     external: true
     name: jenkins-lab_jenkins-network
+  # Created by nexus/compose.yml: start Nexus first so Jenkins can reach http://nexus:8081
+  nexus-network:
+    external: true

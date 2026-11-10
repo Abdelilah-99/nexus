@@ -14,9 +14,10 @@ pipeline {
 
         // Nexus: every Maven download (dependencies and Maven itself) goes through
         // buy02-maven-group, and the publish stages upload to the hosted repositories.
+        // The Docker addresses default to the lab network; the host-Docker profile overrides them.
         NEXUS_URL = 'http://nexus:8081'
-        NEXUS_DOCKER_PUSH = 'nexus:8082'
-        NEXUS_DOCKER_PULL = 'nexus:8083'
+        NEXUS_DOCKER_PUSH = "${env.NEXUS_DOCKER_PUSH ?: 'nexus:8082'}"
+        NEXUS_DOCKER_PULL = "${env.NEXUS_DOCKER_PULL ?: 'nexus:8083'}"
         NEXUS = credentials('nexus-ci')
         NEXUS_USERNAME = "${NEXUS_USR}"
         NEXUS_PASSWORD = "${NEXUS_PSW}"
