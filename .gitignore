@@ -23,3 +23,7 @@ jenkins-secrets/
 # SonarScanner working files
 **/.scannerwork/
 **/.sonar/
+.idea/
+*.iml
+/docs
+Task*
