@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Maven settings for building Buy02 through Nexus.
+
+    export NEXUS_URL=http://localhost:8081 NEXUS_USERNAME=... NEXUS_PASSWORD=...
+    mvn -s nexus/maven/settings.xml deploy
+
+  Credentials come from the environment and are never stored in this file.
+-->
+<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">
+
+  <!-- Server ids match the mirror below and distributionManagement in the root pom -->
+  <servers>
+    <server>
+      <id>nexus</id>
+      <username>${env.NEXUS_USERNAME}</username>
+      <password>${env.NEXUS_PASSWORD}</password>
+    </server>
+    <server>
+      <id>nexus-releases</id>
+      <username>${env.NEXUS_USERNAME}</username>
+      <password>${env.NEXUS_PASSWORD}</password>
+    </server>
+    <server>
+      <id>nexus-snapshots</id>
+      <username>${env.NEXUS_USERNAME}</username>
+      <password>${env.NEXUS_PASSWORD}</password>
+    </server>
+  </servers>
+
+  <!-- Every repository request (Central included) goes to the Nexus group: nothing bypasses Nexus -->
+  <mirrors>
+    <mirror>
+      <id>nexus</id>
+      <name>Buy02 Nexus group</name>
+      <mirrorOf>*</mirrorOf>
+      <url>${env.NEXUS_URL}/repository/buy02-maven-group/</url>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>nexus</id>
+      <properties>
+        <!-- Overrides the default nexus.url of the root pom used by distributionManagement -->
+        <nexus.url>${env.NEXUS_URL}</nexus.url>
+      </properties>
+      <!-- Redefine central so snapshots can be resolved through the mirror as well -->
+      <repositories>
+        <repository>
+          <id>central</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>central</id>
+          <url>https://repo.maven.apache.org/maven2</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>nexus</activeProfile>
+  </activeProfiles>
+</settings>

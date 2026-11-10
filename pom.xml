@@ -19,6 +19,25 @@
   <name>buy-02</name>
   <description>Buy02 marketplace microservices</description>
 
+  <properties>
+    <!-- Overridden by nexus/maven/settings.xml (NEXUS_URL) or -Dnexus.url=... -->
+    <nexus.url>http://localhost:8081</nexus.url>
+  </properties>
+
+  <!-- Where "mvn deploy" publishes; the ids match the servers in nexus/maven/settings.xml -->
+  <distributionManagement>
+    <repository>
+      <id>nexus-releases</id>
+      <name>Buy02 releases</name>
+      <url>${nexus.url}/repository/buy02-releases/</url>
+    </repository>
+    <snapshotRepository>
+      <id>nexus-snapshots</id>
+      <name>Buy02 snapshots</name>
+      <url>${nexus.url}/repository/buy02-snapshots/</url>
+    </snapshotRepository>
+  </distributionManagement>
+
   <modules>
     <module>discovery</module>
     <module>gateway</module>
