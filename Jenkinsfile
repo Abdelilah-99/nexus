@@ -11,6 +11,19 @@ pipeline {
     }
     environment {
         BRANCH_NAME = "${env.GIT_BRANCH ? env.GIT_BRANCH.replace('origin/', '') : 'main'}"
+
+        // Nexus: every Maven download (dependencies and Maven itself) goes through
+        // buy02-maven-group, and the publish stages upload to the hosted repositories.
+        NEXUS_URL = 'http://nexus:8081'
+        NEXUS_DOCKER_PUSH = 'nexus:8082'
+        NEXUS_DOCKER_PULL = 'nexus:8083'
+        NEXUS = credentials('nexus-ci')
+        NEXUS_USERNAME = "${NEXUS_USR}"
+        NEXUS_PASSWORD = "${NEXUS_PSW}"
+        MAVEN_ARGS = "-s ${WORKSPACE}/nexus/maven/settings.xml"
+        MVNW_REPOURL = "${NEXUS_URL}/repository/buy02-maven-group"
+        MVNW_USERNAME = "${NEXUS_USR}"
+        MVNW_PASSWORD = "${NEXUS_PSW}"
     }
     stages {
         // ========================================
@@ -19,6 +32,19 @@ pipeline {
         stage('Docker Check') {
             steps {
                 sh 'docker version'
+            }
+        }
+
+        // Base images are pulled through the Nexus Docker group and images are
+        // pushed to the hosted repository, so log in to both connectors.
+        stage('Nexus Docker Login') {
+            steps {
+                sh '''
+                    set +x
+                    for registry in "$NEXUS_DOCKER_PULL" "$NEXUS_DOCKER_PUSH"; do
+                        echo "$NEXUS_PSW" | docker login "$registry" -u "$NEXUS_USR" --password-stdin
+                    done
+                '''
             }
         }
 
@@ -247,6 +273,7 @@ pipeline {
                 dir('product-service') {
                     sh '''
                         docker build --load \\
+                            --build-arg BASE_REGISTRY="$NEXUS_DOCKER_PULL" \\
                             -t product-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -259,6 +286,7 @@ pipeline {
                 dir('user-service') {
                     sh '''
                         docker build --load \\
+                            --build-arg BASE_REGISTRY="$NEXUS_DOCKER_PULL" \\
                             -t user-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -271,6 +299,7 @@ pipeline {
                 dir('media-service') {
                     sh '''
                         docker build --load \\
+                            --build-arg BASE_REGISTRY="$NEXUS_DOCKER_PULL" \\
                             -t media-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -283,6 +312,7 @@ pipeline {
                 dir('order-service') {
                     sh '''
                         docker build --load \\
+                            --build-arg BASE_REGISTRY="$NEXUS_DOCKER_PULL" \\
                             -t order-service:${BUILD_NUMBER} \\
                             .
                     '''
@@ -295,6 +325,7 @@ pipeline {
                 dir('gateway') {
                     sh '''
                         docker build --load \\
+                            --build-arg BASE_REGISTRY="$NEXUS_DOCKER_PULL" \\
                             -t gateway:${BUILD_NUMBER} \\
                             .
                     '''
@@ -307,6 +338,7 @@ pipeline {
                 dir('discovery') {
                     sh '''
                         docker build --load \\
+                            --build-arg BASE_REGISTRY="$NEXUS_DOCKER_PULL" \\
                             -t discovery:${BUILD_NUMBER} \\
                             .
                     '''
@@ -319,6 +351,7 @@ pipeline {
                 dir('frontend') {
                     sh '''
                         docker build --load \\
+                            --build-arg BASE_REGISTRY="$NEXUS_DOCKER_PULL" \\
                             -t frontend:${BUILD_NUMBER} \\
                             .
                     '''
@@ -350,6 +383,45 @@ pipeline {
                     echo "gateway:${BUILD_NUMBER}"
                     echo "discovery:${BUILD_NUMBER}"
                     echo "frontend:${BUILD_NUMBER}"
+                '''
+            }
+        }
+
+        // ========================================
+        // 7b. Publish to Nexus
+        // ========================================
+        // Every push to main publishes: the version decides the repository
+        // (x.y.z-SNAPSHOT -> buy02-snapshots, x.y.z -> buy02-releases).
+        stage('Publish Maven Artifacts to Nexus') {
+            when {
+                expression { env.BRANCH_NAME == 'main' && !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause') }
+            }
+            steps {
+                // Tests and packaging already ran; deploy only uploads the parent pom and the jars.
+                sh 'bash ./mvnw -B deploy -DskipTests -Dnexus.url="$NEXUS_URL"'
+            }
+        }
+
+        stage('Push Docker Images to Nexus') {
+            when {
+                expression { env.BRANCH_NAME == 'main' && !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause') }
+            }
+            steps {
+                sh '''
+                    VERSION=$(bash ./mvnw -q -N help:evaluate -Dexpression=project.version -DforceStdout)
+                    COMMIT=$(git rev-parse --short HEAD)
+                    for service in product-service user-service media-service order-service gateway discovery frontend; do
+                        image="$NEXUS_DOCKER_PUSH/buy02/$service"
+                        docker tag "$service:${BUILD_NUMBER}" "$image:$VERSION"
+                        docker tag "$service:${BUILD_NUMBER}" "$image:$COMMIT"
+                        docker tag "$service:${BUILD_NUMBER}" "$image:build-${BUILD_NUMBER}"
+                        case "$VERSION" in
+                            *-SNAPSHOT) ;;
+                            *) docker tag "$service:${BUILD_NUMBER}" "$image:latest" ;;
+                        esac
+                        docker push --all-tags "$image"
+                        echo "Published $image:$VERSION ($COMMIT, build ${BUILD_NUMBER})"
+                    done
                 '''
             }
         }
@@ -690,6 +762,7 @@ pipeline {
             // Archive and publish JUnit test reports for all microservices
             archiveArtifacts artifacts: '**/target/site/jacoco/**, frontend/coverage/frontend/**', allowEmptyArchive: true
             junit testResults: '**/target/surefire-reports/*.xml', allowEmptyResults: true
+            sh 'docker logout "$NEXUS_DOCKER_PULL" || true; docker logout "$NEXUS_DOCKER_PUSH" || true'
             echo 'Pipeline finished.'
         }
     }

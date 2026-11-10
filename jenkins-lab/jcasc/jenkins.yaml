@@ -147,6 +147,23 @@ credentials:
                   # END GITHUB CREDENTIALS
 
                   # ==================================
+                  # Nexus (ci-jenkins: publish, no delete)
+                  # ==================================
+
+                  # BEGIN NEXUS CREDENTIALS
+                  - usernamePassword:
+                        scope: GLOBAL
+
+                        id: "nexus-ci"
+
+                        description: "Nexus CI deployer (buy02-ci-deployer role)"
+
+                        username: "${NEXUS_CI_USERNAME}"
+
+                        password: "${NEXUS_CI_PASSWORD}"
+                  # END NEXUS CREDENTIALS
+
+                  # ==================================
                   # Buy01 .env
                   # ==================================
 
@@ -232,7 +249,7 @@ jobs:
 
                               remote {
 
-                                  url('https://github.com/AyyoubMh48/buy-02')
+                                  url('https://github.com/Abdelilah-99/nexus')
 
                                   credentials('github-mr-jenk')
 

@@ -17,6 +17,8 @@ fi
 
 export GITHUB_USERNAME="$(cat /run/secrets/github-username 2>/dev/null || true)"
 export GITHUB_PAT="$(cat /run/secrets/github-pat 2>/dev/null || true)"
+export NEXUS_CI_USERNAME="$(cat /run/secrets/nexus-ci-username 2>/dev/null || echo ci-jenkins)"
+export NEXUS_CI_PASSWORD="$(cat /run/secrets/nexus-ci-password 2>/dev/null || true)"
 export JENKINS_ADMIN_PASSWORD="$(cat /run/secrets/jenkins-admin-password)"
 export BUY01_ENV_B64="$(base64 -w 0 /run/secrets/buy01-env)"
 export GATEWAY_P12_B64="$(base64 -w 0 /run/secrets/gateway-keystore.p12)"
@@ -73,6 +75,18 @@ if [ -z "$GITHUB_PAT" ]; then
     chown jenkins:jenkins "$public_config"
     export CASC_JENKINS_CONFIG="$public_config"
     echo "Using anonymous checkout; configure a GitHub PAT for a private repository." >&2
+fi
+
+# The pipeline publishes to Nexus with the nexus-ci credential. Without the secret,
+# start anyway and let the pipeline report the missing credential.
+if [ -z "$NEXUS_CI_PASSWORD" ]; then
+    nexus_config=$(mktemp /tmp/jenkins-nexus.XXXXXX.yaml)
+    sed '/# BEGIN NEXUS CREDENTIALS/,/# END NEXUS CREDENTIALS/d' \
+        "${CASC_JENKINS_CONFIG:-/casc/jenkins.yaml}" > "$nexus_config"
+    chmod 600 "$nexus_config"
+    chown jenkins:jenkins "$nexus_config"
+    export CASC_JENKINS_CONFIG="$nexus_config"
+    echo "Missing /run/secrets/nexus-ci-password: create it to publish to Nexus." >&2
 fi
 
 exec su -s /bin/bash jenkins -c 'exec /usr/local/bin/jenkins.sh "$@"' -- "$@"

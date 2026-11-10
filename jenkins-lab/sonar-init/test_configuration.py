@@ -17,7 +17,8 @@ class ConfigurationTests(unittest.TestCase):
             secrets = root / 'secrets'
             secrets.mkdir()
             for name in ('github-username', 'github-pat', 'jenkins-admin-password', 'buy01-env',
-                         'gateway-keystore.p12', 'gateway-keystore.crt', 'gateway-keystore.key'):
+                         'gateway-keystore.p12', 'gateway-keystore.crt', 'gateway-keystore.key',
+                         'nexus-ci-password'):
                 (secrets / name).write_text('fixture')
             for component, service in bootstrap.COMPONENTS.items():
                 (secrets / f'sonar-{component}-token').write_text('fixture-' + component)
@@ -28,7 +29,7 @@ class ConfigurationTests(unittest.TestCase):
                 (secrets / missing).unlink()
             entrypoint = (ROOT / 'docker-entrypoint.sh').read_text()
             output = root / 'base.yaml'
-            entrypoint = entrypoint.replace('/tmp/jenkins-public.', str(root / 'public.')).replace('/run/secrets', str(secrets)).replace('/casc/jenkins.yaml', str(ROOT / 'jcasc/jenkins.yaml')).replace('/tmp/jenkins-base.yaml', str(output))
+            entrypoint = entrypoint.replace('/tmp/jenkins-public.', str(root / 'public.')).replace('/tmp/jenkins-nexus.', str(root / 'nexus.')).replace('/run/secrets', str(secrets)).replace('/casc/jenkins.yaml', str(ROOT / 'jcasc/jenkins.yaml')).replace('/tmp/jenkins-base.yaml', str(output))
             # Replace only OS handoff tools in a private PATH, never start a controller.
             tools = root / 'bin'
             tools.mkdir()
@@ -61,6 +62,14 @@ class ConfigurationTests(unittest.TestCase):
                 self.assertNotIn('sonar-product-token', fallback)
                 self.assertIn('${JENKINS_ADMIN_PASSWORD}', fallback)
                 self.assertIn('github-mr-jenk', fallback)
+
+    def test_missing_nexus_password_omits_only_the_nexus_credential(self):
+        exported, selected = self.run_entrypoint('nexus-ci-password')
+        self.assertTrue(exported['CASC_JENKINS_CONFIG'].endswith('.yaml'))
+        self.assertNotIn('nexus-ci', selected)
+        self.assertNotIn('${NEXUS_CI_PASSWORD}', selected)
+        self.assertIn('${SONAR_ORDER_TOKEN}', selected)
+        self.assertIn('github-mr-jenk', selected)
 
     def test_jcasc_pipeline_and_live_verifier_include_every_component(self):
         config = (ROOT / 'jcasc/jenkins.yaml').read_text()

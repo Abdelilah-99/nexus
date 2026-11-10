@@ -17,6 +17,11 @@ services:
     environment:
       DOCKER_TLS_CERTDIR: /certs
 
+    # Nexus Docker connectors speak plain HTTP inside the lab network
+    command:
+      - --insecure-registry=nexus:8082
+      - --insecure-registry=nexus:8083
+
     volumes:
       - jenkins-docker-tls:/certs
       - jenkins-docker-certs:/certs/client
@@ -36,6 +41,7 @@ services:
 
     networks:
       - jenkins-network
+      - nexus-network
 
 
   # ==========================================
@@ -119,6 +125,7 @@ services:
 
     networks:
       - jenkins-network
+      - nexus-network
 
 
   sonar-db:
@@ -191,6 +198,10 @@ services:
 networks:
 
   jenkins-network:
+
+  # Created by nexus/compose.yml: start Nexus first so Jenkins can reach http://nexus:8081
+  nexus-network:
+    external: true
 
 
 
