@@ -1,0 +1,756 @@
+[
+ {
+  "title": "The Shawshank Redemption",
+  "releaseDate": "1994-09-23",
+  "runtime": 142,
+  "director": "Frank Darabont",
+  "genres": [
+   "Drama",
+   "Crime"
+  ],
+  "overview": "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Godfather",
+  "releaseDate": "1972-03-24",
+  "runtime": 175,
+  "director": "Francis Ford Coppola",
+  "genres": [
+   "Drama",
+   "Crime"
+  ],
+  "overview": "The aging patriarch of an organized crime dynasty transfers control of his empire to his reluctant son.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Dark Knight",
+  "releaseDate": "2008-07-18",
+  "runtime": 152,
+  "director": "Christopher Nolan",
+  "genres": [
+   "Action",
+   "Crime",
+   "Drama"
+  ],
+  "overview": "Batman faces the Joker, a criminal mastermind who wants to plunge Gotham City into anarchy.",
+  "posterUrl": null
+ },
+ {
+  "title": "Pulp Fiction",
+  "releaseDate": "1994-10-14",
+  "runtime": 154,
+  "director": "Quentin Tarantino",
+  "genres": [
+   "Crime",
+   "Drama"
+  ],
+  "overview": "The lives of two mob hitmen, a boxer and a pair of diner bandits intertwine in four tales of violence and redemption.",
+  "posterUrl": null
+ },
+ {
+  "title": "Forrest Gump",
+  "releaseDate": "1994-07-06",
+  "runtime": 142,
+  "director": "Robert Zemeckis",
+  "genres": [
+   "Drama",
+   "Romance"
+  ],
+  "overview": "A kind-hearted man with a low IQ witnesses and unwittingly influences several defining events of 20th-century America.",
+  "posterUrl": null
+ },
+ {
+  "title": "Inception",
+  "releaseDate": "2010-07-16",
+  "runtime": 148,
+  "director": "Christopher Nolan",
+  "genres": [
+   "Action",
+   "Sci-Fi",
+   "Thriller"
+  ],
+  "overview": "A thief who steals secrets through dream-sharing technology is given the task of planting an idea in a CEO's mind.",
+  "posterUrl": null
+ },
+ {
+  "title": "Fight Club",
+  "releaseDate": "1999-10-15",
+  "runtime": 139,
+  "director": "David Fincher",
+  "genres": [
+   "Drama",
+   "Thriller"
+  ],
+  "overview": "An insomniac office worker and a soap maker form an underground fight club that evolves into something much more.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Matrix",
+  "releaseDate": "1999-03-31",
+  "runtime": 136,
+  "director": "Lana Wachowski, Lilly Wachowski",
+  "genres": [
+   "Action",
+   "Sci-Fi"
+  ],
+  "overview": "A hacker learns that his reality is a simulation and joins a rebellion against its machine controllers.",
+  "posterUrl": null
+ },
+ {
+  "title": "Goodfellas",
+  "releaseDate": "1990-09-19",
+  "runtime": 146,
+  "director": "Martin Scorsese",
+  "genres": [
+   "Crime",
+   "Drama"
+  ],
+  "overview": "The story of Henry Hill and his life in the mob, covering his relationship with his wife and his partners.",
+  "posterUrl": null
+ },
+ {
+  "title": "Interstellar",
+  "releaseDate": "2014-11-07",
+  "runtime": 169,
+  "director": "Christopher Nolan",
+  "genres": [
+   "Sci-Fi",
+   "Drama",
+   "Adventure"
+  ],
+  "overview": "A team of explorers travels through a wormhole in space in an attempt to ensure humanity's survival.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Lord of the Rings: The Fellowship of the Ring",
+  "releaseDate": "2001-12-19",
+  "runtime": 178,
+  "director": "Peter Jackson",
+  "genres": [
+   "Fantasy",
+   "Adventure"
+  ],
+  "overview": "A hobbit and eight companions set out on a journey to destroy the One Ring.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Lord of the Rings: The Return of the King",
+  "releaseDate": "2003-12-17",
+  "runtime": 201,
+  "director": "Peter Jackson",
+  "genres": [
+   "Fantasy",
+   "Adventure",
+   "Drama"
+  ],
+  "overview": "Gandalf and Aragorn lead the World of Men against Sauron's army while Frodo nears Mount Doom.",
+  "posterUrl": null
+ },
+ {
+  "title": "Star Wars",
+  "releaseDate": "1977-05-25",
+  "runtime": 121,
+  "director": "George Lucas",
+  "genres": [
+   "Sci-Fi",
+   "Adventure",
+   "Action"
+  ],
+  "overview": "Luke Skywalker joins a Jedi Knight, a pilot and two droids to rescue a princess from the evil Empire.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Empire Strikes Back",
+  "releaseDate": "1980-05-21",
+  "runtime": 124,
+  "director": "Irvin Kershner",
+  "genres": [
+   "Sci-Fi",
+   "Adventure",
+   "Action"
+  ],
+  "overview": "After the Rebels are overpowered by the Empire, Luke begins Jedi training with Yoda.",
+  "posterUrl": null
+ },
+ {
+  "title": "Back to the Future",
+  "releaseDate": "1985-07-03",
+  "runtime": 116,
+  "director": "Robert Zemeckis",
+  "genres": [
+   "Sci-Fi",
+   "Comedy",
+   "Adventure"
+  ],
+  "overview": "A teenager is accidentally sent thirty years into the past in a time-travelling DeLorean.",
+  "posterUrl": null
+ },
+ {
+  "title": "Jurassic Park",
+  "releaseDate": "1993-06-11",
+  "runtime": 127,
+  "director": "Steven Spielberg",
+  "genres": [
+   "Sci-Fi",
+   "Adventure",
+   "Thriller"
+  ],
+  "overview": "A theme park of cloned dinosaurs suffers a major security breakdown during a preview tour.",
+  "posterUrl": null
+ },
+ {
+  "title": "Terminator 2: Judgment Day",
+  "releaseDate": "1991-07-03",
+  "runtime": 137,
+  "director": "James Cameron",
+  "genres": [
+   "Action",
+   "Sci-Fi"
+  ],
+  "overview": "A cyborg is sent back in time to protect a young John Connor from a more advanced, shape-shifting cyborg.",
+  "posterUrl": null
+ },
+ {
+  "title": "Alien",
+  "releaseDate": "1979-05-25",
+  "runtime": 117,
+  "director": "Ridley Scott",
+  "genres": [
+   "Horror",
+   "Sci-Fi"
+  ],
+  "overview": "The crew of a commercial spacecraft encounters a deadly lifeform after investigating a distress call.",
+  "posterUrl": null
+ },
+ {
+  "title": "Blade Runner",
+  "releaseDate": "1982-06-25",
+  "runtime": 117,
+  "director": "Ridley Scott",
+  "genres": [
+   "Sci-Fi",
+   "Thriller"
+  ],
+  "overview": "A blade runner must pursue and terminate four replicants who have returned to Earth.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Silence of the Lambs",
+  "releaseDate": "1991-02-14",
+  "runtime": 118,
+  "director": "Jonathan Demme",
+  "genres": [
+   "Thriller",
+   "Crime",
+   "Horror"
+  ],
+  "overview": "A young FBI cadet seeks the help of an imprisoned cannibal killer to catch another serial killer.",
+  "posterUrl": null
+ },
+ {
+  "title": "Se7en",
+  "releaseDate": "1995-09-22",
+  "runtime": 127,
+  "director": "David Fincher",
+  "genres": [
+   "Crime",
+   "Thriller"
+  ],
+  "overview": "Two detectives hunt a serial killer who uses the seven deadly sins as his motives.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Usual Suspects",
+  "releaseDate": "1995-08-16",
+  "runtime": 106,
+  "director": "Bryan Singer",
+  "genres": [
+   "Crime",
+   "Thriller"
+  ],
+  "overview": "A sole survivor tells of the twisty events leading up to a horrific gun battle on a boat.",
+  "posterUrl": null
+ },
+ {
+  "title": "Gladiator",
+  "releaseDate": "2000-05-05",
+  "runtime": 155,
+  "director": "Ridley Scott",
+  "genres": [
+   "Action",
+   "Drama",
+   "Adventure"
+  ],
+  "overview": "A former Roman general seeks revenge against the corrupt emperor who murdered his family.",
+  "posterUrl": null
+ },
+ {
+  "title": "Saving Private Ryan",
+  "releaseDate": "1998-07-24",
+  "runtime": 169,
+  "director": "Steven Spielberg",
+  "genres": [
+   "War",
+   "Drama"
+  ],
+  "overview": "Following the Normandy landings, a group of soldiers goes behind enemy lines to retrieve a paratrooper.",
+  "posterUrl": null
+ },
+ {
+  "title": "Schindler's List",
+  "releaseDate": "1993-12-15",
+  "runtime": 195,
+  "director": "Steven Spielberg",
+  "genres": [
+   "Drama",
+   "History",
+   "War"
+  ],
+  "overview": "A German industrialist saves the lives of more than a thousand Jewish refugees during the Holocaust.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Green Mile",
+  "releaseDate": "1999-12-10",
+  "runtime": 189,
+  "director": "Frank Darabont",
+  "genres": [
+   "Drama",
+   "Fantasy",
+   "Crime"
+  ],
+  "overview": "A death row guard discovers that one of his prisoners has a mysterious gift.",
+  "posterUrl": null
+ },
+ {
+  "title": "Titanic",
+  "releaseDate": "1997-12-19",
+  "runtime": 194,
+  "director": "James Cameron",
+  "genres": [
+   "Drama",
+   "Romance"
+  ],
+  "overview": "A young aristocrat falls in love with a poor artist aboard the ill-fated R.M.S. Titanic.",
+  "posterUrl": null
+ },
+ {
+  "title": "Avatar",
+  "releaseDate": "2009-12-18",
+  "runtime": 162,
+  "director": "James Cameron",
+  "genres": [
+   "Sci-Fi",
+   "Adventure",
+   "Action"
+  ],
+  "overview": "A paraplegic marine on Pandora becomes torn between following orders and protecting the world he feels is his home.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Lion King",
+  "releaseDate": "1994-06-24",
+  "runtime": 88,
+  "director": "Roger Allers, Rob Minkoff",
+  "genres": [
+   "Animation",
+   "Family",
+   "Drama"
+  ],
+  "overview": "A young lion prince flees his kingdom after the murder of his father and must return to reclaim it.",
+  "posterUrl": null
+ },
+ {
+  "title": "Toy Story",
+  "releaseDate": "1995-11-22",
+  "runtime": 81,
+  "director": "John Lasseter",
+  "genres": [
+   "Animation",
+   "Family",
+   "Comedy"
+  ],
+  "overview": "A cowboy doll feels threatened when a new spaceman action figure becomes his owner's favourite toy.",
+  "posterUrl": null
+ },
+ {
+  "title": "Finding Nemo",
+  "releaseDate": "2003-05-30",
+  "runtime": 100,
+  "director": "Andrew Stanton",
+  "genres": [
+   "Animation",
+   "Family",
+   "Adventure"
+  ],
+  "overview": "A timid clownfish sets out on a journey across the ocean to bring his son home.",
+  "posterUrl": null
+ },
+ {
+  "title": "WALL-E",
+  "releaseDate": "2008-06-27",
+  "runtime": 98,
+  "director": "Andrew Stanton",
+  "genres": [
+   "Animation",
+   "Family",
+   "Sci-Fi"
+  ],
+  "overview": "A lonely waste-collecting robot on a deserted Earth falls in love and follows her into space.",
+  "posterUrl": null
+ },
+ {
+  "title": "Up",
+  "releaseDate": "2009-05-29",
+  "runtime": 96,
+  "director": "Pete Docter",
+  "genres": [
+   "Animation",
+   "Family",
+   "Adventure"
+  ],
+  "overview": "An elderly widower ties thousands of balloons to his house to fly to South America.",
+  "posterUrl": null
+ },
+ {
+  "title": "Inside Out",
+  "releaseDate": "2015-06-19",
+  "runtime": 95,
+  "director": "Pete Docter",
+  "genres": [
+   "Animation",
+   "Family",
+   "Comedy"
+  ],
+  "overview": "The emotions inside a young girl's mind guide her through a difficult move to a new city.",
+  "posterUrl": null
+ },
+ {
+  "title": "Coco",
+  "releaseDate": "2017-11-22",
+  "runtime": 105,
+  "director": "Lee Unkrich",
+  "genres": [
+   "Animation",
+   "Family",
+   "Fantasy"
+  ],
+  "overview": "An aspiring musician enters the Land of the Dead to find his great-great-grandfather.",
+  "posterUrl": null
+ },
+ {
+  "title": "Spirited Away",
+  "releaseDate": "2001-07-20",
+  "runtime": 125,
+  "director": "Hayao Miyazaki",
+  "genres": [
+   "Animation",
+   "Fantasy",
+   "Family"
+  ],
+  "overview": "A young girl wanders into a world ruled by gods, witches and spirits, where humans are changed into beasts.",
+  "posterUrl": null
+ },
+ {
+  "title": "My Neighbor Totoro",
+  "releaseDate": "1988-04-16",
+  "runtime": 86,
+  "director": "Hayao Miyazaki",
+  "genres": [
+   "Animation",
+   "Family",
+   "Fantasy"
+  ],
+  "overview": "Two sisters move to the countryside and befriend the magical forest spirits who live nearby.",
+  "posterUrl": null
+ },
+ {
+  "title": "Spider-Man: Into the Spider-Verse",
+  "releaseDate": "2018-12-14",
+  "runtime": 117,
+  "director": "Bob Persichetti, Peter Ramsey, Rodney Rothman",
+  "genres": [
+   "Animation",
+   "Action",
+   "Adventure"
+  ],
+  "overview": "Teen Miles Morales becomes Spider-Man and joins counterparts from other dimensions.",
+  "posterUrl": null
+ },
+ {
+  "title": "Parasite",
+  "releaseDate": "2019-05-30",
+  "runtime": 132,
+  "director": "Bong Joon-ho",
+  "genres": [
+   "Thriller",
+   "Drama",
+   "Comedy"
+  ],
+  "overview": "A poor family schemes to become employed by a wealthy household, with unexpected consequences.",
+  "posterUrl": null
+ },
+ {
+  "title": "Whiplash",
+  "releaseDate": "2014-10-10",
+  "runtime": 106,
+  "director": "Damien Chazelle",
+  "genres": [
+   "Drama",
+   "Music"
+  ],
+  "overview": "A promising young drummer enrols at a cut-throat conservatory under a ruthless instructor.",
+  "posterUrl": null
+ },
+ {
+  "title": "La La Land",
+  "releaseDate": "2016-12-09",
+  "runtime": 128,
+  "director": "Damien Chazelle",
+  "genres": [
+   "Romance",
+   "Music",
+   "Comedy"
+  ],
+  "overview": "A jazz pianist and an aspiring actress fall in love while pursuing their dreams in Los Angeles.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Grand Budapest Hotel",
+  "releaseDate": "2014-03-28",
+  "runtime": 99,
+  "director": "Wes Anderson",
+  "genres": [
+   "Comedy",
+   "Adventure",
+   "Crime"
+  ],
+  "overview": "A legendary concierge and his lobby boy become entangled in the theft of a priceless painting.",
+  "posterUrl": null
+ },
+ {
+  "title": "Amélie",
+  "releaseDate": "2001-04-25",
+  "runtime": 122,
+  "director": "Jean-Pierre Jeunet",
+  "genres": [
+   "Comedy",
+   "Romance"
+  ],
+  "overview": "A shy Parisian waitress decides to secretly change the lives of the people around her for the better.",
+  "posterUrl": null
+ },
+ {
+  "title": "Eternal Sunshine of the Spotless Mind",
+  "releaseDate": "2004-03-19",
+  "runtime": 108,
+  "director": "Michel Gondry",
+  "genres": [
+   "Romance",
+   "Sci-Fi",
+   "Drama"
+  ],
+  "overview": "After a painful breakup, a man undergoes a procedure to erase his memories of his former girlfriend.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Truman Show",
+  "releaseDate": "1998-06-05",
+  "runtime": 103,
+  "director": "Peter Weir",
+  "genres": [
+   "Comedy",
+   "Drama",
+   "Sci-Fi"
+  ],
+  "overview": "An insurance salesman discovers his whole life is a reality television show.",
+  "posterUrl": null
+ },
+ {
+  "title": "Groundhog Day",
+  "releaseDate": "1993-02-12",
+  "runtime": 101,
+  "director": "Harold Ramis",
+  "genres": [
+   "Comedy",
+   "Fantasy",
+   "Romance"
+  ],
+  "overview": "A cynical weatherman finds himself reliving the same day again and again.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Big Lebowski",
+  "releaseDate": "1998-03-06",
+  "runtime": 117,
+  "director": "Joel Coen",
+  "genres": [
+   "Comedy",
+   "Crime"
+  ],
+  "overview": "An easygoing bowler is mistaken for a millionaire and drawn into a kidnapping plot.",
+  "posterUrl": null
+ },
+ {
+  "title": "Superbad",
+  "releaseDate": "2007-08-17",
+  "runtime": 113,
+  "director": "Greg Mottola",
+  "genres": [
+   "Comedy"
+  ],
+  "overview": "Two co-dependent high-school seniors try to make the most of their last weeks before graduation.",
+  "posterUrl": null
+ },
+ {
+  "title": "Get Out",
+  "releaseDate": "2017-02-24",
+  "runtime": 104,
+  "director": "Jordan Peele",
+  "genres": [
+   "Horror",
+   "Thriller"
+  ],
+  "overview": "A young Black man uncovers a disturbing secret when he visits his white girlfriend's family.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Shining",
+  "releaseDate": "1980-05-23",
+  "runtime": 146,
+  "director": "Stanley Kubrick",
+  "genres": [
+   "Horror",
+   "Drama"
+  ],
+  "overview": "A family heads to an isolated hotel for the winter, where a sinister presence influences the father.",
+  "posterUrl": null
+ },
+ {
+  "title": "A Quiet Place",
+  "releaseDate": "2018-04-06",
+  "runtime": 90,
+  "director": "John Krasinski",
+  "genres": [
+   "Horror",
+   "Sci-Fi",
+   "Thriller"
+  ],
+  "overview": "A family must live in silence while hiding from creatures that hunt by sound.",
+  "posterUrl": null
+ },
+ {
+  "title": "Mad Max: Fury Road",
+  "releaseDate": "2015-05-15",
+  "runtime": 120,
+  "director": "George Miller",
+  "genres": [
+   "Action",
+   "Adventure",
+   "Sci-Fi"
+  ],
+  "overview": "In a post-apocalyptic wasteland, a woman rebels against a tyrant with the help of a drifter named Max.",
+  "posterUrl": null
+ },
+ {
+  "title": "John Wick",
+  "releaseDate": "2014-10-24",
+  "runtime": 101,
+  "director": "Chad Stahelski",
+  "genres": [
+   "Action",
+   "Thriller",
+   "Crime"
+  ],
+  "overview": "An ex-hitman comes out of retirement to track down the gangsters who took everything from him.",
+  "posterUrl": null
+ },
+ {
+  "title": "Die Hard",
+  "releaseDate": "1988-07-15",
+  "runtime": 132,
+  "director": "John McTiernan",
+  "genres": [
+   "Action",
+   "Thriller"
+  ],
+  "overview": "A New York cop tries to save his wife and others taken hostage by terrorists in a Los Angeles skyscraper.",
+  "posterUrl": null
+ },
+ {
+  "title": "Raiders of the Lost Ark",
+  "releaseDate": "1981-06-12",
+  "runtime": 115,
+  "director": "Steven Spielberg",
+  "genres": [
+   "Action",
+   "Adventure"
+  ],
+  "overview": "Archaeologist Indiana Jones races the Nazis to find the legendary Ark of the Covenant.",
+  "posterUrl": null
+ },
+ {
+  "title": "Arrival",
+  "releaseDate": "2016-11-11",
+  "runtime": 116,
+  "director": "Denis Villeneuve",
+  "genres": [
+   "Sci-Fi",
+   "Drama",
+   "Thriller"
+  ],
+  "overview": "A linguist works with the military to communicate with alien lifeforms after twelve spacecraft appear.",
+  "posterUrl": null
+ },
+ {
+  "title": "Dune",
+  "releaseDate": "2021-10-22",
+  "runtime": 155,
+  "director": "Denis Villeneuve",
+  "genres": [
+   "Sci-Fi",
+   "Adventure",
+   "Drama"
+  ],
+  "overview": "Paul Atreides travels to the most dangerous planet in the universe to secure his family's future.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Social Network",
+  "releaseDate": "2010-10-01",
+  "runtime": 120,
+  "director": "David Fincher",
+  "genres": [
+   "Drama",
+   "History"
+  ],
+  "overview": "The story of how Harvard student Mark Zuckerberg created Facebook and the lawsuits that followed.",
+  "posterUrl": null
+ },
+ {
+  "title": "Oppenheimer",
+  "releaseDate": "2023-07-21",
+  "runtime": 180,
+  "director": "Christopher Nolan",
+  "genres": [
+   "Drama",
+   "History"
+  ],
+  "overview": "The story of J. Robert Oppenheimer and his role in the development of the atomic bomb.",
+  "posterUrl": null
+ },
+ {
+  "title": "The Prestige",
+  "releaseDate": "2006-10-20",
+  "runtime": 130,
+  "director": "Christopher Nolan",
+  "genres": [
+   "Drama",
+   "Thriller",
+   "Sci-Fi"
+  ],
+  "overview": "Two rival stage magicians engage in a battle to create the ultimate illusion.",
+  "posterUrl": null
+ }
+]

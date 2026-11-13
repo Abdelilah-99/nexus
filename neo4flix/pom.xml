@@ -44,5 +44,6 @@
   <modules>
     <module>security-common</module>
     <module>user-service</module>
+    <module>movie-service</module>
   </modules>
 </project>

@@ -1,0 +1,24 @@
+server:
+  port: ${PORT:8082}
+
+spring:
+  application:
+    name: movie-service
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD}
+
+neo4flix:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: neo4flix
+  # Loads seed/movies.json into an empty database at startup.
+  seed-movies: ${SEED_MOVIES:true}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
