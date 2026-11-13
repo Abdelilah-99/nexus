@@ -43,5 +43,6 @@
 
   <modules>
     <module>security-common</module>
+    <module>user-service</module>
   </modules>
 </project>

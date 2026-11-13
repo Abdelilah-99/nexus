@@ -1,0 +1,31 @@
+server:
+  port: ${PORT:8081}
+
+spring:
+  application:
+    name: user-service
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD}
+
+neo4flix:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: neo4flix
+    access-token-ttl: ${JWT_TTL_SECONDS:3600}
+  # Created at startup when no account has this username (lets you manage the movie catalogue).
+  admin:
+    username: ${ADMIN_USERNAME:admin}
+    email: ${ADMIN_EMAIL:admin@neo4flix.local}
+    password: ${ADMIN_PASSWORD:}
+  login:
+    max-failures: 5
+    lock-minutes: 15
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
