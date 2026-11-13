@@ -1,0 +1,24 @@
+server:
+  port: ${PORT:8084}
+
+spring:
+  application:
+    name: recommendation-service
+  neo4j:
+    uri: ${NEO4J_URI:bolt://localhost:7687}
+    authentication:
+      username: ${NEO4J_USERNAME:neo4j}
+      password: ${NEO4J_PASSWORD}
+
+neo4flix:
+  jwt:
+    secret: ${JWT_SECRET}
+    issuer: neo4flix
+  user-service-url: ${USER_SERVICE_URL:http://localhost:8081}
+  movie-service-url: ${MOVIE_SERVICE_URL:http://localhost:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
