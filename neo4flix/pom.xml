@@ -42,5 +42,6 @@
   </dependencyManagement>
 
   <modules>
+    <module>security-common</module>
   </modules>
 </project>
