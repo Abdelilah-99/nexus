@@ -29,6 +29,10 @@ public final class MovieDtos {
             @NotEmpty List<@NotBlank @Size(max = 40) String> genres) {
     }
 
+    /** A related movie, its similarity score and human-readable reasons ("Same director", ...). */
+    public record SimilarMovie(Movie movie, double score, List<String> reasons) {
+    }
+
     public record Page<T>(List<T> items, long total, int page, int size) {
     }
 

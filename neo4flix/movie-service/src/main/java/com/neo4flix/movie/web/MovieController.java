@@ -3,11 +3,13 @@ package com.neo4flix.movie.web;
 import java.time.LocalDate;
 import java.util.List;
 import com.neo4flix.movie.service.MovieService;
+import com.neo4flix.movie.service.SimilarMovieService;
 import com.neo4flix.movie.web.MovieDtos.Genre;
 import com.neo4flix.movie.web.MovieDtos.Movie;
 import com.neo4flix.movie.web.MovieDtos.MovieRequest;
 import com.neo4flix.movie.web.MovieDtos.Page;
 import com.neo4flix.movie.web.MovieDtos.SearchCriteria;
+import com.neo4flix.movie.web.MovieDtos.SimilarMovie;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -26,9 +28,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class MovieController {
 
     private final MovieService movies;
+    private final SimilarMovieService similar;
 
-    public MovieController(MovieService movies) {
+    public MovieController(MovieService movies, SimilarMovieService similar) {
         this.movies = movies;
+        this.similar = similar;
     }
 
     /** Example: /api/movies?title=matrix&genre=Action&yearFrom=1990&yearTo=2005&sort=rating */
@@ -56,6 +60,11 @@ public class MovieController {
     @GetMapping("/{id}")
     public Movie get(@PathVariable String id) {
         return movies.get(id);
+    }
+
+    @GetMapping("/{id}/similar")
+    public List<SimilarMovie> similar(@PathVariable String id, @RequestParam(defaultValue = "8") int limit) {
+        return similar.similar(id, limit);
     }
 
     @PostMapping

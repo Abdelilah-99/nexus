@@ -12,7 +12,8 @@ public class SecurityRules {
     @Bean
     AuthorizationRules authorizationRules() {
         return auth -> auth
-                .requestMatchers(HttpMethod.GET, "/api/movies", "/api/movies/genres", "/api/movies/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/movies", "/api/movies/genres", "/api/movies/{id}",
+                        "/api/movies/{id}/similar").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/movies/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/movies/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/movies/**").hasRole("ADMIN");
