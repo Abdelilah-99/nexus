@@ -1,0 +1,36 @@
+server:
+  port: ${PORT:8080}
+  # The gateway runs behind the HTTPS reverse proxy (nginx): trust its X-Forwarded-* headers.
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          # The Authorization header (JWT) is forwarded untouched; each service validates it itself.
+          routes:
+            - id: user-service
+              uri: ${USER_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/auth/**,/api/users/**,/api/admin/users/**
+            - id: movie-service
+              uri: ${MOVIE_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/movies/**,/api/movies
+            - id: rating-service
+              uri: ${RATING_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/ratings/**,/api/ratings,/api/admin/ratings/**
+            - id: recommendation-service
+              uri: ${RECOMMENDATION_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/recommendations/**,/api/recommendations
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

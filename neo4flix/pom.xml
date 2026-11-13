@@ -47,5 +47,6 @@
     <module>movie-service</module>
     <module>rating-service</module>
     <module>recommendation-service</module>
+    <module>gateway</module>
   </modules>
 </project>
