@@ -13,7 +13,8 @@ public class SecurityRules {
     @Bean
     AuthorizationRules authorizationRules() {
         return auth -> auth
-                .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login",
+                        "/api/auth/2fa/verify").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN");
     }
 

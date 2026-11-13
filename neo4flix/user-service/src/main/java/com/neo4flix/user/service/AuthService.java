@@ -58,6 +58,9 @@ public class AuthService {
             throw ApiException.unauthorized(BAD_CREDENTIALS);
         }
         attempts.recordSuccess(login);
+        if (user.isTotpEnabled()) {
+            return LoginResponse.mfa(tokens.mfaPendingToken(user));
+        }
         return LoginResponse.session(tokens.accessToken(user), tokens.accessTokenTtl(), UserDto.of(user));
     }
 }

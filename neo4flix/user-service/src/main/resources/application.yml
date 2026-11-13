@@ -20,6 +20,9 @@ neo4flix:
     username: ${ADMIN_USERNAME:admin}
     email: ${ADMIN_EMAIL:admin@neo4flix.local}
     password: ${ADMIN_PASSWORD:}
+  # AES key that encrypts the TOTP secrets stored in Neo4j.
+  crypto:
+    key: ${DATA_ENCRYPTION_KEY}
   login:
     max-failures: 5
     lock-minutes: 15

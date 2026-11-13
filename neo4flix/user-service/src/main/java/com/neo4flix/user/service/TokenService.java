@@ -36,6 +36,11 @@ public class TokenService {
         return encode(user, TokenTypes.ACCESS, properties.accessTokenTtl(), roles);
     }
 
+    /** Proves "password was correct" for 5 minutes; only accepted by POST /api/auth/2fa/verify. */
+    public String mfaPendingToken(User user) {
+        return encode(user, TokenTypes.MFA_PENDING, 300, List.of());
+    }
+
     String encode(User user, String type, long ttlSeconds, List<String> roles) {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()

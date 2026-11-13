@@ -6,11 +6,12 @@ import com.neo4flix.user.model.User;
 
 /** What the API exposes about a user: never the password hash. */
 public record UserDto(String id, String username, String email, String displayName, String bio,
-        List<String> roles, Instant createdAt) {
+        List<String> roles, Instant createdAt, boolean twoFactorEnabled) {
 
     public static UserDto of(User user) {
         return new UserDto(user.getId(), user.getUsername(), user.getEmail(), user.getDisplayName(), user.getBio(),
-                user.getRoles().stream().map(Enum::name).sorted().toList(), user.getCreatedAt());
+                user.getRoles().stream().map(Enum::name).sorted().toList(), user.getCreatedAt(),
+                user.isTotpEnabled());
     }
 
     /** Public view shown to other users (no e-mail). */
