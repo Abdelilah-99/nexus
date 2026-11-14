@@ -6,5 +6,6 @@ export const routes: Routes = [
   { path: '', loadComponent: () => import('./features/home').then((m) => m.Home), title: 'Neo4flix' },
   { path: 'login', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login').then((m) => m.Login), title: 'Log in · Neo4flix' },
   { path: 'register', canActivate: [guestGuard], loadComponent: () => import('./features/auth/register').then((m) => m.Register), title: 'Sign up · Neo4flix' },
+  { path: 'movies/:id', loadComponent: () => import('./features/movies/movie-details').then((m) => m.MovieDetails), title: 'Movie · Neo4flix' },
   { path: '**', redirectTo: '' },
 ];

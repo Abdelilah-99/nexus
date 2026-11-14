@@ -38,7 +38,7 @@ h2 { font-size: 1.3rem; }
 .small { font-size: .85rem; }
 
 .container { width: 100%; max-width: 1240px; margin: 0 auto; padding: 0 16px; }
-.page { padding: 28px 0 64px; }
+.page { padding-top: 28px; padding-bottom: 64px; }
 .page-header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
 .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 .stack { display: flex; flex-direction: column; gap: 14px; }
@@ -89,7 +89,9 @@ button.chip { cursor: pointer; font: inherit; font-size: .8rem; }
 
 /* Movie grid */
 .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
-@media (max-width: 480px) { .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }
+.grid > * { min-width: 0; }
+/* minmax(0, 1fr): a long title can no longer stretch its column wider than the screen */
+@media (max-width: 480px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
 
 .empty { text-align: center; padding: 48px 16px; color: var(--text-dim); }
 .spinner {
