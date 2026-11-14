@@ -1,6 +1,21 @@
 # Neo4flix stack. Start with: docker compose --env-file .env up -d --build
 name: neo4flix
 
+# Settings shared by the four Neo4j microservices (YAML anchors, reused below with <<: *common-env).
+x-common-env: &common-env
+  NEO4J_URI: bolt://neo4j:7687
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+  JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+  JAVA_TOOL_OPTIONS: -Xmx256m
+
+x-app-health: &app-health
+  # Each service sets PORT; Spring Boot reads it as server.port. ($$ escapes $ for compose.)
+  test: ["CMD-SHELL", "wget -qO- http://localhost:$${PORT}/actuator/health | grep -q UP"]
+  interval: 10s
+  timeout: 5s
+  start_period: 40s
+  retries: 12
+
 services:
   # The single graph database shared by every microservice. Each service owns
   # its own node labels and relationship types (see README "Graph model").
@@ -22,6 +37,76 @@ services:
       interval: 10s
       timeout: 5s
       retries: 20
+    networks: [backend]
+
+  # ---- Spring Boot microservices (all built from docker/service.Dockerfile) ----
+  # None of them publishes a port: they are only reachable inside the "backend" network.
+  user-service:
+    build: { context: ., dockerfile: docker/service.Dockerfile, args: { SERVICE: user-service } }
+    image: neo4flix/user-service:latest
+    environment:
+      <<: *common-env
+      PORT: 8081
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:?set DATA_ENCRYPTION_KEY in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@neo4flix.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on: { neo4j: { condition: service_healthy } }
+    healthcheck: *app-health
+    networks: [backend]
+
+  movie-service:
+    build: { context: ., dockerfile: docker/service.Dockerfile, args: { SERVICE: movie-service } }
+    image: neo4flix/movie-service:latest
+    environment:
+      <<: *common-env
+      PORT: 8082
+    depends_on: { neo4j: { condition: service_healthy } }
+    healthcheck: *app-health
+    networks: [backend]
+
+  rating-service:
+    build: { context: ., dockerfile: docker/service.Dockerfile, args: { SERVICE: rating-service } }
+    image: neo4flix/rating-service:latest
+    environment:
+      <<: *common-env
+      PORT: 8083
+      MOVIE_SERVICE_URL: http://movie-service:8082
+    depends_on: { neo4j: { condition: service_healthy } }
+    healthcheck: *app-health
+    networks: [backend]
+
+  recommendation-service:
+    build: { context: ., dockerfile: docker/service.Dockerfile, args: { SERVICE: recommendation-service } }
+    image: neo4flix/recommendation-service:latest
+    environment:
+      <<: *common-env
+      PORT: 8084
+      USER_SERVICE_URL: http://user-service:8081
+      MOVIE_SERVICE_URL: http://movie-service:8082
+    depends_on: { neo4j: { condition: service_healthy } }
+    healthcheck: *app-health
+    networks: [backend]
+
+  gateway:
+    build: { context: ., dockerfile: docker/service.Dockerfile, args: { SERVICE: gateway } }
+    image: neo4flix/gateway:latest
+    environment:
+      PORT: 8080
+      JAVA_TOOL_OPTIONS: -Xmx192m
+      USER_SERVICE_URL: http://user-service:8081
+      MOVIE_SERVICE_URL: http://movie-service:8082
+      RATING_SERVICE_URL: http://rating-service:8083
+      RECOMMENDATION_SERVICE_URL: http://recommendation-service:8084
+    ports:
+      # Temporary, for testing the API directly. Replaced by the HTTPS reverse proxy.
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      user-service: { condition: service_healthy }
+      movie-service: { condition: service_healthy }
+      rating-service: { condition: service_healthy }
+      recommendation-service: { condition: service_healthy }
+    healthcheck: *app-health
     networks: [backend]
 
 volumes:
