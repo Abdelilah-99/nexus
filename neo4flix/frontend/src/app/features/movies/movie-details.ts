@@ -8,11 +8,12 @@ import { MovieCard } from '../../shared/movie-card';
 import { Poster } from '../../shared/poster';
 import { Stars } from '../../shared/stars';
 import { RateBox } from '../ratings/rate-box';
+import { WatchlistButton } from '../../shared/watchlist-button';
 
 /** /movies/:id: information, average rating with its distribution, latest reviews and similar movies. */
 @Component({
   selector: 'app-movie-details',
-  imports: [Poster, Stars, MovieCard, RateBox, DatePipe, DecimalPipe],
+  imports: [Poster, Stars, MovieCard, RateBox, WatchlistButton, DatePipe, DecimalPipe],
   template: `
     <div class="container page">
       @if (error()) {
@@ -47,6 +48,7 @@ import { RateBox } from '../ratings/rate-box';
               </div>
             </dl>
             @if (m.overview) { <p class="overview">{{ m.overview }}</p> }
+            <div class="row"><app-watchlist-button [movieId]="m.id" /></div>
             <app-rate-box [movieId]="m.id" (changed)="refresh()" />
           </div>
         </section>

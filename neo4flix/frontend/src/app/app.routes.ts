@@ -8,5 +8,7 @@ export const routes: Routes = [
   { path: 'register', canActivate: [guestGuard], loadComponent: () => import('./features/auth/register').then((m) => m.Register), title: 'Sign up · Neo4flix' },
   { path: 'movies/:id', loadComponent: () => import('./features/movies/movie-details').then((m) => m.MovieDetails), title: 'Movie · Neo4flix' },
   { path: 'ratings', canActivate: [authGuard], loadComponent: () => import('./features/ratings/my-ratings').then((m) => m.MyRatings), title: 'My ratings · Neo4flix' },
+  { path: 'recommendations', canActivate: [authGuard], loadComponent: () => import('./features/recommendations/recommendations').then((m) => m.Recommendations), title: 'For you · Neo4flix' },
+  { path: 'watchlist', canActivate: [authGuard], loadComponent: () => import('./features/watchlist/watchlist').then((m) => m.Watchlist), title: 'Watchlist · Neo4flix' },
   { path: '**', redirectTo: '' },
 ];

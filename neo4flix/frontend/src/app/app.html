@@ -7,7 +7,9 @@
     <nav class="nav" [class.open]="menuOpen" (click)="menuOpen = false">
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
       @if (auth.isLoggedIn()) {
+        <a routerLink="/recommendations" routerLinkActive="active">For you</a>
         <a routerLink="/ratings" routerLinkActive="active">My ratings</a>
+        <a routerLink="/watchlist" routerLinkActive="active">Watchlist</a>
         <span class="spacer"></span>
         <span class="muted small">{{ auth.user()?.displayName }}</span>
         <button class="btn btn-sm" (click)="auth.logout()">Log out</button>
