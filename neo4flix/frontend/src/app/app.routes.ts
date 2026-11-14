@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, guestGuard } from './core/guards';
+import { adminGuard, authGuard, guestGuard } from './core/guards';
 
 // Every page is lazy-loaded: the browser downloads a page's code only when it is opened.
 export const routes: Routes = [
@@ -13,5 +13,6 @@ export const routes: Routes = [
   { path: 'friends', canActivate: [authGuard], loadComponent: () => import('./features/social/friends').then((m) => m.Friends), title: 'Friends · Neo4flix' },
   { path: 'shared', canActivate: [authGuard], loadComponent: () => import('./features/social/shared').then((m) => m.Shared), title: 'Shared · Neo4flix' },
   { path: 'account', canActivate: [authGuard], loadComponent: () => import('./features/profile/profile').then((m) => m.Profile), title: 'My account · Neo4flix' },
+  { path: 'admin/movies', canActivate: [adminGuard], loadComponent: () => import('./features/admin/admin-movies').then((m) => m.AdminMovies), title: 'Manage movies · Neo4flix' },
   { path: '**', redirectTo: '' },
 ];

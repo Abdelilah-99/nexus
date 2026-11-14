@@ -28,6 +28,16 @@ export interface RecommendationFilters {
   limit?: number;
 }
 
+export interface MovieInput {
+  title: string;
+  releaseDate: string;
+  runtime: number | null;
+  director: string | null;
+  overview: string | null;
+  posterUrl: string | null;
+  genres: string[];
+}
+
 /** Drops empty values so the URL only carries the filters actually used. */
 function params(values: object): HttpParams {
   let p = new HttpParams();
@@ -53,6 +63,15 @@ export class ApiService {
   }
   similar(id: string, limit = 8): Observable<SimilarMovie[]> {
     return this.http.get<SimilarMovie[]>(`/api/movies/${encodeURIComponent(id)}/similar`, { params: params({ limit }) });
+  }
+  createMovie(body: MovieInput): Observable<Movie> {
+    return this.http.post<Movie>('/api/movies', body);
+  }
+  updateMovie(id: string, body: MovieInput): Observable<Movie> {
+    return this.http.put<Movie>(`/api/movies/${encodeURIComponent(id)}`, body);
+  }
+  deleteMovie(id: string): Observable<void> {
+    return this.http.delete<void>(`/api/movies/${encodeURIComponent(id)}`);
   }
   genres(): Observable<Genre[]> {
     return this.http.get<Genre[]>('/api/movies/genres');
