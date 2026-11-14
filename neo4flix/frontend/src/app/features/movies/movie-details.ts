@@ -7,11 +7,12 @@ import { Movie, MovieRatings, SimilarMovie, errorMessage } from '../../core/mode
 import { MovieCard } from '../../shared/movie-card';
 import { Poster } from '../../shared/poster';
 import { Stars } from '../../shared/stars';
+import { RateBox } from '../ratings/rate-box';
 
 /** /movies/:id: information, average rating with its distribution, latest reviews and similar movies. */
 @Component({
   selector: 'app-movie-details',
-  imports: [Poster, Stars, MovieCard, DatePipe, DecimalPipe],
+  imports: [Poster, Stars, MovieCard, RateBox, DatePipe, DecimalPipe],
   template: `
     <div class="container page">
       @if (error()) {
@@ -46,6 +47,7 @@ import { Stars } from '../../shared/stars';
               </div>
             </dl>
             @if (m.overview) { <p class="overview">{{ m.overview }}</p> }
+            <app-rate-box [movieId]="m.id" (changed)="refresh()" />
           </div>
         </section>
 
@@ -151,6 +153,12 @@ export class MovieDetails {
     });
     this.reloadRatings(id);
     this.api.similar(id).subscribe((s) => this.similar.set(s));
+  }
+
+  /** After I rate: reload the average (movie-service) and the reviews (rating-service). */
+  protected refresh(): void {
+    this.api.movie(this.id()).subscribe((m) => this.movie.set(m));
+    this.reloadRatings(this.id());
   }
 
   protected reloadRatings(id: string): void {

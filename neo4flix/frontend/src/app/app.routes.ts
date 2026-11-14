@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { guestGuard } from './core/guards';
+import { authGuard, guestGuard } from './core/guards';
 
 // Every page is lazy-loaded: the browser downloads a page's code only when it is opened.
 export const routes: Routes = [
@@ -7,5 +7,6 @@ export const routes: Routes = [
   { path: 'login', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login').then((m) => m.Login), title: 'Log in · Neo4flix' },
   { path: 'register', canActivate: [guestGuard], loadComponent: () => import('./features/auth/register').then((m) => m.Register), title: 'Sign up · Neo4flix' },
   { path: 'movies/:id', loadComponent: () => import('./features/movies/movie-details').then((m) => m.MovieDetails), title: 'Movie · Neo4flix' },
+  { path: 'ratings', canActivate: [authGuard], loadComponent: () => import('./features/ratings/my-ratings').then((m) => m.MyRatings), title: 'My ratings · Neo4flix' },
   { path: '**', redirectTo: '' },
 ];
