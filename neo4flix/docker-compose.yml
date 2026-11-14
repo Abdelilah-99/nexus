@@ -98,9 +98,6 @@ services:
       MOVIE_SERVICE_URL: http://movie-service:8082
       RATING_SERVICE_URL: http://rating-service:8083
       RECOMMENDATION_SERVICE_URL: http://recommendation-service:8084
-    ports:
-      # Temporary, for testing the API directly. Replaced by the HTTPS reverse proxy.
-      - "127.0.0.1:8080:8080"
     depends_on:
       user-service: { condition: service_healthy }
       movie-service: { condition: service_healthy }
@@ -109,8 +106,36 @@ services:
     healthcheck: *app-health
     networks: [backend]
 
+  # ---- Public entry point: Angular + HTTPS reverse proxy ----
+  # The only container reachable from outside. It talks to the gateway on the internal network.
+  frontend:
+    build: { context: ./frontend }
+    image: neo4flix/frontend:latest
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      # fullchain.pem + privkey.pem: self-signed in dev (scripts/generate-dev-cert.sh), Let's Encrypt in production.
+      - ./certs:/etc/nginx/certs:ro
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      gateway: { condition: service_healthy }
+    networks: [backend]
+
+  # Let's Encrypt (production only): docker compose --profile letsencrypt run --rm certbot
+  certbot:
+    image: certbot/certbot:latest
+    profiles: [letsencrypt]
+    volumes:
+      - certbot-webroot:/var/www/certbot
+      - /etc/letsencrypt:/etc/letsencrypt
+    command: >
+      certonly --webroot -w /var/www/certbot --non-interactive --agree-tos
+      -m ${LETSENCRYPT_EMAIL:-admin@example.com} -d ${DOMAIN:-example.com}
+
 volumes:
   neo4j-data:
+  certbot-webroot:
 
 networks:
   backend:

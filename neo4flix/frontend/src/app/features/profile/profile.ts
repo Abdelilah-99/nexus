@@ -33,6 +33,8 @@ import { TwoFactor } from './two-factor';
         <section class="panel">
           <h2>Change password</h2>
           <form [formGroup]="passwords" (ngSubmit)="changePassword()" class="stack">
+            <!-- Lets password managers know which account this password belongs to. -->
+            <input type="text" autocomplete="username" [value]="auth.user()?.username ?? ''" hidden readonly />
             <div><label for="cur">Current password</label><input id="cur" class="input" type="password" formControlName="current" autocomplete="current-password" /></div>
             <div>
               <label for="new">New password</label>
