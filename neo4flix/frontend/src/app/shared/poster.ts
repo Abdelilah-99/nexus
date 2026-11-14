@@ -17,11 +17,12 @@ import { Component, computed, input } from '@angular/core';
     }
   `,
   styles: `
-    :host { display: block; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: var(--bg-elev-2); }
+    :host { display: block; container-type: inline-size; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: var(--bg-elev-2); }
     img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .fallback { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 14px; }
-    span { font-weight: 800; font-size: 1.05rem; line-height: 1.15; text-shadow: 0 2px 8px rgb(0 0 0 / .5); }
-    small { opacity: .8; margin-top: 4px; }
+    /* cqi = % of the poster width: the title shrinks with the poster (small thumbnails stay readable) */
+    .fallback { width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 8cqi; }
+    span { font-weight: 800; font-size: clamp(.6rem, 10cqi, 1.05rem); overflow-wrap: anywhere; line-height: 1.15; text-shadow: 0 2px 8px rgb(0 0 0 / .5); }
+    small { opacity: .8; margin-top: 4px; font-size: clamp(.55rem, 8cqi, .8rem); }
   `,
 })
 export class Poster {

@@ -73,7 +73,7 @@ export class Home {
     };
     this.page.set(num('page') ?? 0);
     this.api.genres().subscribe((g) => this.genres.set(g));
-    this.load();
+    this.load(false);
   }
 
   onSearch(criteria: MovieSearch): void {
@@ -88,11 +88,17 @@ export class Home {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  private load(): void {
+  /**
+   * syncUrl=false on the first load: the URL already holds the criteria, and navigating while the router
+   * is still activating this page would replace (and silently cancel) the navigation that opened it.
+   */
+  private load(syncUrl = true): void {
     this.loading.set(true);
     this.error.set(null);
-    const query = { ...this.criteria, page: this.page() || undefined };
-    this.router.navigate([], { queryParams: clean(query), replaceUrl: true });
+    if (syncUrl) {
+      const query = { ...this.criteria, page: this.page() || undefined };
+      this.router.navigate([], { queryParams: clean(query), replaceUrl: true });
+    }
     this.api.searchMovies({ ...this.criteria, page: this.page(), size: PAGE_SIZE }).subscribe({
       next: (result) => {
         this.movies.set(result.items);

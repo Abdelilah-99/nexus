@@ -10,5 +10,7 @@ export const routes: Routes = [
   { path: 'ratings', canActivate: [authGuard], loadComponent: () => import('./features/ratings/my-ratings').then((m) => m.MyRatings), title: 'My ratings · Neo4flix' },
   { path: 'recommendations', canActivate: [authGuard], loadComponent: () => import('./features/recommendations/recommendations').then((m) => m.Recommendations), title: 'For you · Neo4flix' },
   { path: 'watchlist', canActivate: [authGuard], loadComponent: () => import('./features/watchlist/watchlist').then((m) => m.Watchlist), title: 'Watchlist · Neo4flix' },
+  { path: 'friends', canActivate: [authGuard], loadComponent: () => import('./features/social/friends').then((m) => m.Friends), title: 'Friends · Neo4flix' },
+  { path: 'shared', canActivate: [authGuard], loadComponent: () => import('./features/social/shared').then((m) => m.Shared), title: 'Shared · Neo4flix' },
   { path: '**', redirectTo: '' },
 ];

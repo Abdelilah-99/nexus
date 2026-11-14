@@ -9,11 +9,12 @@ import { Poster } from '../../shared/poster';
 import { Stars } from '../../shared/stars';
 import { RateBox } from '../ratings/rate-box';
 import { WatchlistButton } from '../../shared/watchlist-button';
+import { ShareDialog } from '../../shared/share-dialog';
 
 /** /movies/:id: information, average rating with its distribution, latest reviews and similar movies. */
 @Component({
   selector: 'app-movie-details',
-  imports: [Poster, Stars, MovieCard, RateBox, WatchlistButton, DatePipe, DecimalPipe],
+  imports: [Poster, Stars, MovieCard, RateBox, WatchlistButton, ShareDialog, DatePipe, DecimalPipe],
   template: `
     <div class="container page">
       @if (error()) {
@@ -48,7 +49,11 @@ import { WatchlistButton } from '../../shared/watchlist-button';
               </div>
             </dl>
             @if (m.overview) { <p class="overview">{{ m.overview }}</p> }
-            <div class="row"><app-watchlist-button [movieId]="m.id" /></div>
+            <div class="row">
+              <app-watchlist-button [movieId]="m.id" />
+              @if (auth.isLoggedIn()) { <button class="btn" (click)="sharing.set(true)">↗ Share</button> }
+            </div>
+            @if (sharing()) { <app-share-dialog [movieId]="m.id" [movieTitle]="m.title" (closed)="sharing.set(false)" /> }
             <app-rate-box [movieId]="m.id" (changed)="refresh()" />
           </div>
         </section>
@@ -126,6 +131,7 @@ export class MovieDetails {
   protected readonly ratings = signal<MovieRatings | null>(null);
   protected readonly similar = signal<SimilarMovie[]>([]);
   protected readonly error = signal<string | null>(null);
+  protected readonly sharing = signal(false);
 
   protected readonly distribution = computed(() => {
     const r = this.ratings();

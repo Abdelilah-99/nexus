@@ -7,6 +7,7 @@ import { ApiService } from '../../core/api.service';
 import { Genre, Recommendation, errorMessage } from '../../core/models';
 import { Poster } from '../../shared/poster';
 import { WatchlistButton } from '../../shared/watchlist-button';
+import { ShareDialog } from '../../shared/share-dialog';
 
 const STRATEGY_LABELS: Record<string, string> = {
   hybrid: 'For you',
@@ -18,7 +19,7 @@ const STRATEGY_LABELS: Record<string, string> = {
 /** Personalised recommendations from the recommendation-service, filterable by genre and release date. */
 @Component({
   selector: 'app-recommendations',
-  imports: [ReactiveFormsModule, RouterLink, Poster, WatchlistButton, DecimalPipe],
+  imports: [ReactiveFormsModule, RouterLink, Poster, WatchlistButton, ShareDialog, DecimalPipe],
   template: `
     <div class="container page">
       <div class="page-header">
@@ -81,6 +82,7 @@ const STRATEGY_LABELS: Record<string, string> = {
                 </ul>
                 <div class="row">
                   <app-watchlist-button [movieId]="r.movie.id" [small]="true" />
+                  <button class="btn btn-sm" (click)="sharing.set(r)">↗ Share</button>
                 </div>
               </div>
             </article>
@@ -88,6 +90,9 @@ const STRATEGY_LABELS: Record<string, string> = {
             <div class="empty">No recommendation matches these filters. Try a wider date range or another genre.</div>
           }
         </div>
+      }
+      @if (sharing(); as r) {
+        <app-share-dialog [movieId]="r.movie.id" [movieTitle]="r.movie.title" (closed)="sharing.set(null)" />
       }
     </div>
   `,
@@ -115,6 +120,7 @@ export class Recommendations {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly coldStart = signal(false);
+  protected readonly sharing = signal<Recommendation | null>(null);
 
   protected readonly filters = this.fb.group({
     strategy: ['hybrid'],

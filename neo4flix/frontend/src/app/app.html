@@ -10,6 +10,10 @@
         <a routerLink="/recommendations" routerLinkActive="active">For you</a>
         <a routerLink="/ratings" routerLinkActive="active">My ratings</a>
         <a routerLink="/watchlist" routerLinkActive="active">Watchlist</a>
+        <a routerLink="/friends" routerLinkActive="active">Friends</a>
+        <a routerLink="/shared" routerLinkActive="active">Shared
+          @if (shares.unread()) { <span class="badge">{{ shares.unread() }}</span> }
+        </a>
         <span class="spacer"></span>
         <span class="muted small">{{ auth.user()?.displayName }}</span>
         <button class="btn btn-sm" (click)="auth.logout()">Log out</button>
