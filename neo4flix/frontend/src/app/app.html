@@ -1,0 +1,30 @@
+<header class="topbar">
+  <div class="container topbar-inner">
+    <a routerLink="/" class="logo" aria-label="Neo4flix home">NEO<span>4</span>FLIX</a>
+
+    <button class="btn btn-ghost burger" (click)="menuOpen = !menuOpen" aria-label="Menu">☰</button>
+
+    <nav class="nav" [class.open]="menuOpen" (click)="menuOpen = false">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+      @if (auth.isLoggedIn()) {
+        <span class="spacer"></span>
+        <span class="muted small">{{ auth.user()?.displayName }}</span>
+        <button class="btn btn-sm" (click)="auth.logout()">Log out</button>
+      } @else {
+        <span class="spacer"></span>
+        <a routerLink="/login" class="btn btn-sm">Log in</a>
+        <a routerLink="/register" class="btn btn-sm btn-primary">Sign up</a>
+      }
+    </nav>
+  </div>
+</header>
+
+<main>
+  <router-outlet />
+</main>
+
+<div class="toasts" aria-live="polite">
+  @for (t of toasts.toasts(); track t.id) {
+    <div class="toast" [class]="'toast toast-' + t.kind" (click)="toasts.dismiss(t.id)">{{ t.text }}</div>
+  }
+</div>
