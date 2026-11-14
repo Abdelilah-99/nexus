@@ -40,8 +40,9 @@ public class MovieService {
             "title", "m.titleLower ASC",
             "year", "m.releaseDate DESC",
             "oldest", "m.releaseDate ASC",
-            "rating", "averageRating DESC, ratingCount DESC",
-            "popular", "ratingCount DESC, averageRating DESC");
+            // coalesce: Cypher sorts null first in DESC order, which would put unrated movies on top.
+            "rating", "coalesce(averageRating, 0) DESC, ratingCount DESC",
+            "popular", "ratingCount DESC, coalesce(averageRating, 0) DESC");
 
     private final Neo4jClient neo4j;
 
