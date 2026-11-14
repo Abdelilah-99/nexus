@@ -20,15 +20,15 @@ import { ToastService } from '../core/toast.service';
       } @else {
         <div>
           <label for="friend">Send to</label>
-          <select id="friend" class="input" [(ngModel)]="friendId">
+          <select id="friend" class="input" [ngModel]="friendId()" (ngModelChange)="friendId.set($event)">
             @for (f of friends(); track f.id) { <option [value]="f.id">{{ f.displayName || f.username }} (&#64;{{ f.username }})</option> }
           </select>
         </div>
         <div>
           <label for="msg">Message (optional)</label>
-          <textarea id="msg" class="input" rows="3" maxlength="300" [(ngModel)]="message" placeholder="You have to watch this!"></textarea>
+          <textarea id="msg" class="input" rows="3" maxlength="300" [ngModel]="message()" (ngModelChange)="message.set($event)" placeholder="You have to watch this!"></textarea>
         </div>
-        <button class="btn btn-primary" [disabled]="!friendId || busy()" (click)="send()">Send recommendation</button>
+        <button class="btn btn-primary" [disabled]="!friendId() || busy()" (click)="send()">Send recommendation</button>
       }
       <div class="row">
         <button class="btn btn-sm" (click)="copyLink()">🔗 Copy link</button>
@@ -52,14 +52,14 @@ export class ShareDialog {
   protected readonly friends = signal<Friend[]>([]);
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
-  protected friendId = '';
-  protected message = '';
+  protected readonly friendId = signal('');
+  protected readonly message = signal('');
 
   constructor() {
     this.api.friends().subscribe({
       next: (f) => {
         this.friends.set(f);
-        this.friendId = f[0]?.id ?? '';
+        this.friendId.set(f[0]?.id ?? '');
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
@@ -68,7 +68,7 @@ export class ShareDialog {
 
   send(): void {
     this.busy.set(true);
-    this.api.share(this.movieId(), this.friendId, this.message.trim() || null).subscribe({
+    this.api.share(this.movieId(), this.friendId(), this.message().trim() || null).subscribe({
       next: (s) => {
         this.toast.success(`Sent to ${s.toUsername}`);
         this.closed.emit();

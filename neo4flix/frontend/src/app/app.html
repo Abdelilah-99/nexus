@@ -15,7 +15,7 @@
           @if (shares.unread()) { <span class="badge">{{ shares.unread() }}</span> }
         </a>
         <span class="spacer"></span>
-        <span class="muted small">{{ auth.user()?.displayName }}</span>
+        <a routerLink="/account" routerLinkActive="active">{{ auth.user()?.displayName }}</a>
         <button class="btn btn-sm" (click)="auth.logout()">Log out</button>
       } @else {
         <span class="spacer"></span>

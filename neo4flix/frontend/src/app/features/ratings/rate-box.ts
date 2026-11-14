@@ -19,7 +19,7 @@ import { Stars } from '../../shared/stars';
       } @else {
         <app-stars [editable]="true" [(value)]="score" />
         <textarea class="input" rows="3" maxlength="1000" placeholder="Write a short review (optional)"
-                  [(ngModel)]="review" aria-label="Review"></textarea>
+                  [ngModel]="review()" (ngModelChange)="review.set($event)" aria-label="Review"></textarea>
         <div class="row">
           <button class="btn btn-primary" [disabled]="!score() || busy()" (click)="save()">
             {{ existing() ? 'Update rating' : 'Rate' }}
@@ -44,7 +44,7 @@ export class RateBox {
 
   protected readonly existing = signal<Rating | null>(null);
   protected readonly score = signal<number | null>(null);
-  protected review = '';
+  protected readonly review = signal('');
   protected readonly busy = signal(false);
 
   constructor() {
@@ -52,7 +52,7 @@ export class RateBox {
       const id = this.movieId();
       this.existing.set(null);
       this.score.set(null);
-      this.review = '';
+      this.review.set('');
       if (this.auth.isLoggedIn()) {
         // 404 simply means "not rated yet".
         this.api.myRating(id).subscribe({ next: (r) => this.fill(r), error: () => undefined });
@@ -62,7 +62,7 @@ export class RateBox {
 
   save(): void {
     this.busy.set(true);
-    this.api.rate(this.movieId(), this.score()!, this.review.trim() || null).subscribe({
+    this.api.rate(this.movieId(), this.score()!, this.review().trim() || null).subscribe({
       next: (r) => {
         this.toast.success(this.existing() ? 'Rating updated' : 'Thanks for rating!');
         this.fill(r);
@@ -83,7 +83,7 @@ export class RateBox {
         this.toast.info('Rating deleted');
         this.existing.set(null);
         this.score.set(null);
-        this.review = '';
+        this.review.set('');
         this.busy.set(false);
         this.changed.emit();
       },
@@ -97,6 +97,6 @@ export class RateBox {
   private fill(r: Rating): void {
     this.existing.set(r);
     this.score.set(r.score);
-    this.review = r.review ?? '';
+    this.review.set(r.review ?? '');
   }
 }
