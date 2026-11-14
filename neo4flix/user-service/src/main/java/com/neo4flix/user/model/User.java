@@ -34,7 +34,7 @@ public class User {
     private String pendingTotpSecret;
     /** Last TOTP time step accepted: the same code can never be used twice. */
     private long lastTotpStep;
-    /** BCrypt hashes of the one-time recovery codes. */
+    /** SHA-256 hashes of the one-time recovery codes. */
     private List<String> recoveryCodeHashes = new ArrayList<>();
 
     protected User() {

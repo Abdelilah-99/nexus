@@ -1,8 +1,12 @@
 package com.neo4flix.user.service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.Iterator;
 import java.util.List;
 import java.util.OptionalLong;
@@ -77,7 +81,7 @@ public class TwoFactorService {
         for (int i = 0; i < RECOVERY_CODES; i++) {
             String recovery = randomRecoveryCode();
             recoveryCodes.add(recovery);
-            hashes.add(encoder.encode(recovery));
+            hashes.add(sha256(recovery));
         }
         user.setTotpSecret(user.getPendingTotpSecret());
         user.setPendingTotpSecret(null);
@@ -133,9 +137,10 @@ public class TwoFactorService {
             users.save(user);
             return true;
         }
+        byte[] candidate = sha256(trimmed.toLowerCase()).getBytes(StandardCharsets.US_ASCII);
         List<String> hashes = new ArrayList<>(user.getRecoveryCodeHashes());
         for (Iterator<String> it = hashes.iterator(); it.hasNext(); ) {
-            if (encoder.matches(trimmed.toLowerCase(), it.next())) {
+            if (MessageDigest.isEqual(candidate, it.next().getBytes(StandardCharsets.US_ASCII))) {
                 it.remove();
                 user.setRecoveryCodeHashes(hashes);
                 users.save(user);
@@ -143,6 +148,20 @@ public class TwoFactorService {
             }
         }
         return false;
+    }
+
+    /**
+     * Recovery codes are random (10 characters from 31, about 50 bits), so a fast SHA-256 is enough to make a stolen
+     * hash useless. BCrypt is meant for low-entropy human passwords: here it made each 2FA check cost ~2 s of CPU
+     * (8 hashes × 250 ms), which also let anyone burn server CPU with wrong codes.
+     */
+    static String sha256(String value) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private String randomRecoveryCode() {
